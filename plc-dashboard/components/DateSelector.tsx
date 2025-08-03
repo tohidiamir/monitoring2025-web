@@ -4,6 +4,7 @@ interface AvailableDate {
   tableName: string;
   dateString: string;
   formattedDate: string;
+  persianDate: string;
   jsDate: Date;
 }
 
@@ -102,7 +103,7 @@ export default function DateSelector({ plcId, onDateSelect, selectedDate }: Date
         <option value="">تاریخ را انتخاب کنید</option>
         {availableDates.map((date) => (
           <option key={date.dateString} value={date.dateString}>
-            {date.formattedDate} ({date.tableName})
+            {date.persianDate}
           </option>
         ))}
       </select>

@@ -1,6 +1,49 @@
 import { NextResponse } from 'next/server';
 import { getDbConnection } from '@/lib/database';
 
+// تابع تبدیل تاریخ میلادی به شمسی
+function convertToPersianDate(gregorianDate: Date): string {
+  let gYear = gregorianDate.getFullYear();
+  const gMonth = gregorianDate.getMonth() + 1;
+  const gDay = gregorianDate.getDate();
+  
+  // الگوریتم تبدیل میلادی به شمسی
+  const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+  
+  let jy = (gYear <= 1600) ? 0 : 979;
+  gYear -= (gYear <= 1600) ? 621 : 1600;
+  
+  let gy2 = (gMonth > 2) ? (gYear + 1) : gYear;
+  let days = (365 * gYear) + (Math.floor((gy2 + 3) / 4)) + (Math.floor((gy2 + 99) / 100)) - 
+             (Math.floor((gy2 + 399) / 400)) - 80 + gDay + g_d_m[gMonth - 1];
+  
+  jy += 33 * Math.floor(days / 12053);
+  days %= 12053;
+  
+  jy += 4 * Math.floor(days / 1461);
+  days %= 1461;
+  
+  jy += Math.floor((days - 1) / 365);
+  if (days > 365) days = (days - 1) % 365;
+  
+  let jm, jd;
+  if (days < 186) {
+    jm = 1 + Math.floor(days / 31);
+    jd = 1 + (days % 31);
+  } else {
+    jm = 7 + Math.floor((days - 186) / 30);
+    jd = 1 + ((days - 186) % 30);
+  }
+  
+  // نام ماه‌های شمسی
+  const persianMonths = [
+    '', 'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
+    'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
+  ];
+  
+  return `${jd} ${persianMonths[jm]} ${jy}`;
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -49,15 +92,20 @@ export async function GET(request: Request) {
     // تبدیل نام جدول‌ها به تاریخ‌های قابل خواندن
     const availableDates = result.recordset.map((row: any) => {
       const dateString = row.DateString; // مثال: 20250802
-      const year = dateString.substring(0, 4);
-      const month = dateString.substring(4, 6);
-      const day = dateString.substring(6, 8);
+      const year = parseInt(dateString.substring(0, 4));
+      const month = parseInt(dateString.substring(4, 6));
+      const day = parseInt(dateString.substring(6, 8));
+      
+      // تبدیل تاریخ میلادی به شمسی
+      const gregorianDate = new Date(year, month - 1, day);
+      const persianDate = convertToPersianDate(gregorianDate);
       
       return {
         tableName: row.TABLE_NAME,
         dateString: dateString,
-        formattedDate: `${year}/${month}/${day}`,
-        jsDate: new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+        formattedDate: `${year}/${month.toString().padStart(2, '0')}/${day.toString().padStart(2, '0')}`, // میلادی
+        persianDate: persianDate, // شمسی
+        jsDate: gregorianDate
       };
     });
 
