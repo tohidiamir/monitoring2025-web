@@ -8,6 +8,7 @@ import DataChart from '@/components/DataChart';
 interface PLC {
   id: number;
   name: string;
+  displayName: string;
   availableDates: string[];
   database_registers: Array<{
     register: string;
@@ -24,6 +25,12 @@ export default function Home() {
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+
+  // Helper function to extract PLC ID
+  const getPLCId = (plcName: string): string => {
+    const parts = plcName.split('_');
+    return parts.length > 1 ? parts[1] : '01';
+  };
 
   // Load PLCs on component mount
   useEffect(() => {
@@ -93,7 +100,12 @@ export default function Home() {
     <div className="min-h-screen bg-gray-100 p-4" dir="rtl">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-900 mb-8 text-center">
-          🏭 داشبورد مانیتورینگ PLC
+          🏭 داشبورد مانیتورینگ اتوکلاو
+          {selectedPLCConfig && (
+            <span className="block text-xl text-blue-600 mt-2">
+              {selectedPLCConfig.displayName || selectedPLCConfig.name}
+            </span>
+          )}
         </h1>
 
         {error && (
@@ -111,7 +123,7 @@ export default function Home() {
               {/* PLC Selection */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  انتخاب PLC
+                  انتخاب اتوکلاو
                 </label>
                 <select
                   value={selectedPLC}
@@ -122,10 +134,10 @@ export default function Home() {
                   }}
                   className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="">PLC را انتخاب کنید</option>
+                  <option value="">اتوکلاو را انتخاب کنید</option>
                   {plcs.map((plc) => (
                     <option key={plc.id} value={plc.name}>
-                      {plc.name}
+                      {plc.displayName || plc.name}
                     </option>
                   ))}
                 </select>
@@ -134,7 +146,7 @@ export default function Home() {
               {/* Date Selection */}
               {selectedPLC && (
                 <DateSelector
-                  plcId={selectedPLC.split('_')[1]} // Extract PLC ID from name (PLC_01 -> 01)
+                  plcId={getPLCId(selectedPLC)}
                   onDateSelect={setSelectedDate}
                   selectedDate={selectedDate}
                 />
@@ -208,7 +220,7 @@ export default function Home() {
                 <div className="flex items-center justify-center h-96 text-gray-500">
                   {selectedPLC && selectedDate ? 
                     '📭 داده‌ای برای نمایش وجود ندارد' : 
-                    '👆 لطفاً PLC و تاریخ را انتخاب کنید'
+                    '👆 لطفاً اتوکلاو و تاریخ را انتخاب کنید'
                   }
                 </div>
               )}

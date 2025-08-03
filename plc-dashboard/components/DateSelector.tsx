@@ -21,6 +21,7 @@ export default function DateSelector({ plcId, onDateSelect, selectedDate }: Date
 
   useEffect(() => {
     if (plcId) {
+      console.log('🔍 DateSelector received plcId:', plcId);
       loadAvailableDates();
     }
   }, [plcId]);
@@ -30,8 +31,11 @@ export default function DateSelector({ plcId, onDateSelect, selectedDate }: Date
       setLoading(true);
       setError(null);
       
+      console.log('📡 Fetching available dates for plcId:', plcId);
       const response = await fetch(`/api/available-dates?plcId=${plcId}`);
       const data = await response.json();
+      
+      console.log('📡 API Response:', data);
       
       if (data.success) {
         setAvailableDates(data.availableDates);

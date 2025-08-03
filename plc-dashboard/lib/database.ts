@@ -59,6 +59,7 @@ export const PLC_CONFIG = [
   {
     id: 1,
     name: 'PLC_01',
+    displayName: 'اتوکلاو 01',
     slave_address: 1,
     registers: {
       start_address: 4596,
@@ -83,6 +84,7 @@ export const PLC_CONFIG = [
   {
     id: 2,
     name: 'PLC_02',
+    displayName: 'اتوکلاو 02',
     slave_address: 2,
     registers: {
       start_address: 4596,

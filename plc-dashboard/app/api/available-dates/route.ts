@@ -50,6 +50,7 @@ export async function GET(request: Request) {
     const plcId = searchParams.get('plcId');
     
     if (!plcId) {
+      console.log('❌ No plcId provided in request');
       return NextResponse.json({
         success: false,
         message: 'PLC ID is required',
