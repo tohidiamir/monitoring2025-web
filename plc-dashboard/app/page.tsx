@@ -13,7 +13,9 @@ interface PLC {
   database_registers: Array<{
     register: string;
     label: string;
+    labelFa: string;
     description: string;
+    descriptionFa: string;
   }>;
 }
 
@@ -175,8 +177,8 @@ export default function Home() {
                           className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                         />
                         <label htmlFor={register.register} className="mr-2 text-sm text-gray-700">
-                          <div className="font-medium">{register.label}</div>
-                          <div className="text-xs text-gray-500">{register.description}</div>
+                          <div className="font-medium">{register.labelFa || register.label}</div>
+                          <div className="text-xs text-gray-500">{register.descriptionFa || register.description}</div>
                         </label>
                       </div>
                     ))}

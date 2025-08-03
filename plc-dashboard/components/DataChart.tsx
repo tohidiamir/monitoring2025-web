@@ -15,7 +15,9 @@ import {
 interface Register {
   register: string;
   label: string;
+  labelFa: string;
   description: string;
+  descriptionFa: string;
 }
 
 interface DataChartProps {
@@ -69,11 +71,16 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
       <div className="mb-4 p-3 bg-gray-50 rounded">
         <div className="flex justify-between items-center text-sm text-gray-600">
           <span>📊 تعداد نقاط داده: {chartData.length.toLocaleString('fa-IR')}</span>
-          <span>📈 تعداد رجیسترها: {displayRegisters.length}</span>
+          <span>📈 تعداد رجیسترها: {displayRegisters.length.toLocaleString('fa-IR')}</span>
           <span>
             🕒 بازه زمانی: {chartData[0]?.time} - {chartData[chartData.length - 1]?.time}
           </span>
         </div>
+        {displayRegisters.length > 0 && (
+          <div className="mt-2 text-xs text-gray-500">
+            رجیسترهای نمایش: {displayRegisters.map(r => r.labelFa || r.label).join('، ')}
+          </div>
+        )}
       </div>
 
       {/* Chart */}
@@ -100,10 +107,15 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
                 const item = payload?.[0]?.payload;
                 return item?.fullTime || value;
               }}
-              formatter={(value: any, name: string) => [
-                `${Number(value).toLocaleString('fa-IR')}`,
-                name
-              ]}
+              formatter={(value: any, name: string) => {
+                // پیدا کردن رجیستر مربوطه برای نمایش نام فارسی
+                const register = registers.find(r => name.includes(r.label));
+                const displayName = register ? (register.labelFa || register.label) : name;
+                return [
+                  `${Number(value).toLocaleString('fa-IR')}`,
+                  displayName
+                ];
+              }}
               contentStyle={{
                 backgroundColor: '#f8f9fa',
                 border: '1px solid #dee2e6',
@@ -120,7 +132,7 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
                 strokeWidth={2}
                 dot={{ r: 1 }}
                 activeDot={{ r: 4 }}
-                name={`${register.label} (${register.register})`}
+                name={`${register.labelFa || register.label} (${register.register})`}
               />
             ))}
           </LineChart>
