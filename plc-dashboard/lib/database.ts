@@ -1,20 +1,15 @@
 import sql from 'mssql';
 
-// Database configuration using Named Pipes since TCP/IP is disabled
+// Database configuration using tedious driver
 const dbConfig: sql.config = {
-  server: 'localhost', // Named Pipes connection
+   user: 'amir',
+  password: 'sirabi',
+  server: 'localhost',
   database: 'PLCMonitoring',
-  driver: 'msnodesqlv8',
   options: {
-    trustedConnection: true,
+    encrypt: false,
+    trustServerCertificate: true,
   },
-  pool: {
-    max: 10,
-    min: 0,
-    idleTimeoutMillis: 30000,
-  },
-  connectionTimeout: 30000,
-  requestTimeout: 30000,
 };
 
 let pool: sql.ConnectionPool | null = null;
@@ -26,14 +21,20 @@ export async function getDbConnection() {
       console.log('Config:', {
         server: dbConfig.server,
         database: dbConfig.database,
-        driver: dbConfig.driver
+        driver: dbConfig.driver,
+        options: dbConfig.options,
       });
-      
+
       pool = new sql.ConnectionPool(dbConfig);
       await pool.connect();
       console.log('✅ Connected to SQL Server database: PLCMonitoring');
     } catch (error) {
       console.error('❌ Database connection failed:', error);
+      console.error('🔍 Detailed Error:', {
+        code: error.code,
+        message: error.message,
+        stack: error.stack,
+      });
       pool = null;
       throw error;
     }

@@ -167,7 +167,7 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
               <div className="space-y-1 text-xs text-gray-600">
                 <div>حداقل: {min.toLocaleString('fa-IR')}</div>
                 <div>حداکثر: {max.toLocaleString('fa-IR')}</div>
-                <div>میانگین: {avg.toFixed(2).toLocaleString('fa-IR')}</div>
+                <div>میانگین: {avg.toFixed(2).toLocaleString()}</div>
               </div>
             </div>
           );

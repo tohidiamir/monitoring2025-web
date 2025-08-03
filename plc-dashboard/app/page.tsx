@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import PLCSelector from '@/components/PLCSelector';
+import DateSelector from '@/components/DateSelector';
 import DataChart from '@/components/DataChart';
 
 interface PLC {
@@ -104,15 +105,84 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* PLC Selection Panel */}
           <div className="lg:col-span-1">
-            <PLCSelector
-              plcs={plcs}
-              selectedPLC={selectedPLC}
-              selectedDate={selectedDate}
-              selectedRegisters={selectedRegisters}
-              onPLCChange={setSelectedPLC}
-              onDateChange={setSelectedDate}
-              onRegistersChange={setSelectedRegisters}
-            />
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold mb-4">تنظیمات</h2>
+              
+              {/* PLC Selection */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  انتخاب PLC
+                </label>
+                <select
+                  value={selectedPLC}
+                  onChange={(e) => {
+                    setSelectedPLC(e.target.value);
+                    setSelectedDate(''); // Reset date when PLC changes
+                    setSelectedRegisters([]);
+                  }}
+                  className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">PLC را انتخاب کنید</option>
+                  {plcs.map((plc) => (
+                    <option key={plc.id} value={plc.name}>
+                      {plc.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Date Selection */}
+              {selectedPLC && (
+                <DateSelector
+                  plcId={selectedPLC.split('_')[1]} // Extract PLC ID from name (PLC_01 -> 01)
+                  onDateSelect={setSelectedDate}
+                  selectedDate={selectedDate}
+                />
+              )}
+
+              {/* Register Selection */}
+              {selectedPLCConfig && selectedDate && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    انتخاب رجیسترها ({selectedRegisters.length} انتخاب شده)
+                  </label>
+                  <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-md p-2">
+                    {selectedPLCConfig.database_registers.map((register) => (
+                      <div key={register.register} className="flex items-center mb-2">
+                        <input
+                          type="checkbox"
+                          id={register.register}
+                          checked={selectedRegisters.includes(register.label)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedRegisters([...selectedRegisters, register.label]);
+                            } else {
+                              setSelectedRegisters(selectedRegisters.filter(r => r !== register.label));
+                            }
+                          }}
+                          className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <label htmlFor={register.register} className="mr-2 text-sm text-gray-700">
+                          <div className="font-medium">{register.label}</div>
+                          <div className="text-xs text-gray-500">{register.description}</div>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Load Data Button */}
+              {selectedPLC && selectedDate && (
+                <button
+                  onClick={loadData}
+                  disabled={loading}
+                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'در حال بارگذاری...' : 'بارگذاری داده‌ها'}
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Chart Panel */}
