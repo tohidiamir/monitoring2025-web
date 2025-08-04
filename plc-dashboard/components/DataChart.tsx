@@ -160,6 +160,63 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
         ))}
       </div>
 
+      {/* Light Status Display */}
+      {displayRegisters.some(r => ['D525', 'D526', 'D527'].includes(r.register)) && (
+        <div className="mt-4">
+          <h3 className="text-lg font-semibold mb-3">🚦 وضعیت چراغ‌ها</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {displayRegisters
+              .filter(r => ['D525', 'D526', 'D527'].includes(r.register))
+              .map((register) => {
+                // Get the latest value for this light
+                const latestValue = chartData[chartData.length - 1]?.[register.label];
+                const isActive = latestValue === 'فعال';
+                
+                let lightConfig = { color: '', bgColor: '', name: '', icon: '●' };
+                
+                if (register.register === 'D525') { // GREEN
+                  lightConfig = {
+                    color: isActive ? 'text-white' : 'text-gray-500',
+                    bgColor: isActive ? 'bg-green-500' : 'bg-gray-300',
+                    name: 'چراغ سبز',
+                    icon: '●'
+                  };
+                } else if (register.register === 'D526') { // RED
+                  lightConfig = {
+                    color: isActive ? 'text-white' : 'text-gray-500',
+                    bgColor: isActive ? 'bg-red-500' : 'bg-gray-300',
+                    name: 'چراغ قرمز',
+                    icon: '●'
+                  };
+                } else if (register.register === 'D527') { // YELLOW
+                  lightConfig = {
+                    color: isActive ? 'text-white' : 'text-gray-500',
+                    bgColor: isActive ? 'bg-yellow-500' : 'bg-gray-300',
+                    name: 'چراغ زرد',
+                    icon: '●'
+                  };
+                }
+
+                return (
+                  <div key={register.label} className="bg-white border rounded p-4">
+                    <div className="flex items-center gap-3">
+                      <span className={`${lightConfig.bgColor} ${lightConfig.color} rounded-full w-8 h-8 flex items-center justify-center text-lg font-bold shadow-lg`}>
+                        {lightConfig.icon}
+                      </span>
+                      <div>
+                        <div className="font-medium">{lightConfig.name}</div>
+                        <div className={`text-sm ${isActive ? 'text-green-600 font-medium' : 'text-gray-500'}`}>
+                          {latestValue || 'نامشخص'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
       {/* Data Summary */}
       <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {displayRegisters.filter(r => !['D525', 'D526', 'D527'].includes(r.register)).map((register) => {

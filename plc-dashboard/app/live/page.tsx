@@ -143,25 +143,48 @@ export default function LiveDataPage() {
     // Special formatting for lights
     if (register.isLight) {
       const isActive = value === 'فعال';
-      let lightColor = '';
+      let lightStyle = '';
       let lightIcon = '';
+      let bgColor = '';
       
       if (register.register === 'D525') { // GREEN
-        lightColor = isActive ? 'text-green-600' : 'text-gray-400';
-        lightIcon = '🟢';
+        lightIcon = '●';
+        if (isActive) {
+          lightStyle = 'text-white';
+          bgColor = 'bg-green-500';
+        } else {
+          lightStyle = 'text-gray-500';
+          bgColor = 'bg-gray-300';
+        }
       } else if (register.register === 'D526') { // RED  
-        lightColor = isActive ? 'text-red-600' : 'text-gray-400';
-        lightIcon = '🔴';
+        lightIcon = '●';
+        if (isActive) {
+          lightStyle = 'text-white';
+          bgColor = 'bg-red-500';
+        } else {
+          lightStyle = 'text-gray-500';
+          bgColor = 'bg-gray-300';
+        }
       } else if (register.register === 'D527') { // YELLOW
-        lightColor = isActive ? 'text-yellow-600' : 'text-gray-400'; 
-        lightIcon = '🟡';
+        lightIcon = '●';
+        if (isActive) {
+          lightStyle = 'text-white';
+          bgColor = 'bg-yellow-500';
+        } else {
+          lightStyle = 'text-gray-500';
+          bgColor = 'bg-gray-300';
+        }
       }
       
       return (
-        <span className={`${lightColor} font-medium flex items-center`}>
-          <span className="mr-1">{lightIcon}</span>
-          {value}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`${bgColor} ${lightStyle} rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-sm`}>
+            {lightIcon}
+          </span>
+          <span className={`font-medium ${isActive ? 'text-gray-800' : 'text-gray-500'}`}>
+            {value}
+          </span>
+        </div>
       );
     }
     
