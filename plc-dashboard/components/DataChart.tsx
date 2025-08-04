@@ -141,7 +141,7 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
 
       {/* Register Legend */}
       <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-        {displayRegisters.map((register, index) => (
+        {displayRegisters.filter(r => !['D525', 'D526', 'D527'].includes(r.register)).map((register, index) => (
           <div
             key={register.label}
             className="flex items-center p-2 bg-gray-50 rounded text-sm"
@@ -151,9 +151,9 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
               style={{ backgroundColor: colors[index % colors.length] }}
             ></div>
             <div>
-              <div className="font-medium">{register.labelFa || register.label}</div>
+              <div className="font-medium">{register.labelFa}</div>
               <div className="text-xs text-gray-500">
-                 {register.descriptionFa || register.description}
+                {register.register} - {register.descriptionFa || register.description}
               </div>
             </div>
           </div>
@@ -162,7 +162,7 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
 
       {/* Data Summary */}
       <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {displayRegisters.map((register) => {
+        {displayRegisters.filter(r => !['D525', 'D526', 'D527'].includes(r.register)).map((register) => {
           const values = chartData
             .map(item => Number(item[register.label]))
             .filter(val => !isNaN(val));
@@ -175,7 +175,7 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
 
           return (
             <div key={register.label} className="bg-white border rounded p-3">
-              <h4 className="font-medium text-sm mb-2">{register.labelFa || register.label}</h4>
+              <h4 className="font-medium text-sm mb-2">{register.labelFa}</h4>
               <div className="space-y-1 text-xs text-gray-600">
                 <div>حداقل: {min.toLocaleString('fa-IR')}</div>
                 <div>حداکثر: {max.toLocaleString('fa-IR')}</div>
