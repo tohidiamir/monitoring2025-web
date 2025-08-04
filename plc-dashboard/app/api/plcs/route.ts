@@ -3,12 +3,12 @@ import { getDbConnection, PLC_CONFIG } from '@/lib/database';
 
 export async function GET() {
   try {
-    console.log('🔍 PLCs API called - connecting to database');
+    console.log('🔍 Autoclaves API called - connecting to database');
     
     // Connect to database
     const pool = await getDbConnection();
     
-    // Get list of available tables for each PLC from database
+    // Get list of available tables for each Autoclave from database
     const plcsWithTables = await Promise.all(
       PLC_CONFIG.map(async (plc) => {
         try {
@@ -48,18 +48,18 @@ export async function GET() {
       })
     );
 
-    console.log('✅ Returning PLCs with database data');
+    console.log('✅ Returning Autoclaves with database data');
 
     return NextResponse.json({
       success: true,
       plcs: plcsWithTables,
     });
   } catch (error) {
-    console.error('❌ Error in PLCs API:', error);
+    console.error('❌ Error in Autoclaves API:', error);
     return NextResponse.json(
       { 
         success: false, 
-        error: 'Failed to fetch PLCs', 
+        error: 'Failed to fetch Autoclaves', 
         details: error?.toString(),
         message: 'Check server logs for more details'
       },

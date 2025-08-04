@@ -28,13 +28,13 @@ export default function Home() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
-  // Helper function to extract PLC ID
+  // Helper function to extract Autoclave ID
   const getPLCId = (plcName: string): string => {
     const parts = plcName.split('_');
     return parts.length > 1 ? parts[1] : '01';
   };
 
-  // Load PLCs on component mount
+  // Load Autoclaves on component mount
   useEffect(() => {
     loadPLCs();
   }, []);
@@ -47,7 +47,7 @@ export default function Home() {
       if (result.success) {
         setPLCs(result.plcs);
       } else {
-        setError('Failed to load PLCs');
+        setError('خطا در بارگذاری اتوکلاوها');
       }
     } catch (err) {
       setError('Error connecting to server');

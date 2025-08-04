@@ -53,11 +53,11 @@ export async function GET(request: Request) {
       console.log('❌ No plcId provided in request');
       return NextResponse.json({
         success: false,
-        message: 'PLC ID is required',
+        message: 'Autoclave ID is required',
       }, { status: 400 });
     }
 
-    console.log(`🔍 Getting available dates for PLC_${plcId.padStart(2, '0')}`);
+    console.log(`🔍 Getting available dates for Autoclave_${plcId.padStart(2, '0')}`);
     const pool = await getDbConnection();
     
     // تست کانکشن - چک کردن دیتابیس فعلی
@@ -110,7 +110,7 @@ export async function GET(request: Request) {
       };
     });
 
-    console.log(`✅ Found ${availableDates.length} available dates for PLC_${plcId.padStart(2, '0')}`);
+    console.log(`✅ Found ${availableDates.length} available dates for Autoclave_${plcId.padStart(2, '0')}`);
 
     return NextResponse.json({
       success: true,
