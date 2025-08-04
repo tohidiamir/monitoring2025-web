@@ -5,7 +5,7 @@ import Navigation from '@/components/Navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, AlertCircle, CheckCircle, Clock } from '@/components/ui/icons';
+import { RefreshCw, AlertCircle, CheckCircle, Clock, ChevronDown, ChevronUp } from '@/components/ui/icons';
 
 interface RegisterData {
   register: string;
@@ -47,6 +47,7 @@ export default function LiveDataPage() {
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set());
 
   const fetchLatestData = async () => {
     try {
@@ -80,6 +81,28 @@ export default function LiveDataPage() {
     const interval = setInterval(fetchLatestData, 30000);
     return () => clearInterval(interval);
   }, [autoRefresh]);
+
+  const toggleExpanded = (plcId: number) => {
+    const newExpanded = new Set(expandedCards);
+    if (newExpanded.has(plcId)) {
+      newExpanded.delete(plcId);
+    } else {
+      newExpanded.add(plcId);
+    }
+    setExpandedCards(newExpanded);
+  };
+
+  const getMainRegisters = (data: RegisterData[]) => {
+    // اطلاعات اصلی: فشار، دمای اصلی، زمان اصلی، زمان اجرا، ثانیه اجرا، چراغ‌ها
+    const mainRegisterNames = ['D500', 'D502', 'D520', 'D521', 'D522', 'D525', 'D526', 'D527'];
+    return data.filter(register => mainRegisterNames.includes(register.register));
+  };
+
+  const getSecondaryRegisters = (data: RegisterData[]) => {
+    // بقیه اطلاعات (غیر از اطلاعات اصلی)
+    const mainRegisterNames = ['D500', 'D502', 'D520', 'D521', 'D522', 'D525', 'D526', 'D527'];
+    return data.filter(register => !mainRegisterNames.includes(register.register));
+  };
 
   const formatPersianTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -188,63 +211,117 @@ export default function LiveDataPage() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {latestData.map((plcData) => (
-          <Card key={plcData.plc.id} className="h-fit">
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-xl">{plcData.plc.displayName}</CardTitle>
-                {getStatusBadge(plcData.status, plcData.connectionQuality, plcData.secondsAgo)}
-              </div>
-              {plcData.lastUpdate && (
-                <div className="text-sm text-gray-600">
-                  آخرین داده: {formatPersianTime(plcData.lastUpdate)}
-                  {plcData.secondsAgo && (
-                    <span className="text-xs text-gray-500 mr-2">
-                      ({plcData.secondsAgo} ثانیه پیش)
-                    </span>
-                  )}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
+        {latestData.map((plcData) => {
+          const isExpanded = expandedCards.has(plcData.plc.id);
+          const mainRegisters = plcData.data ? getMainRegisters(plcData.data) : [];
+          const secondaryRegisters = plcData.data ? getSecondaryRegisters(plcData.data) : [];
+          
+          return (
+            <Card key={plcData.plc.id} className="h-fit">
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-lg">{plcData.plc.displayName}</CardTitle>
+                  {getStatusBadge(plcData.status, plcData.connectionQuality, plcData.secondsAgo)}
                 </div>
-              )}
-              {plcData.connectionQuality && (
-                <div className="text-xs">
-                  کیفیت اتصال: {
-                    plcData.connectionQuality === 'excellent' ? '🟢 عالی' :
-                    plcData.connectionQuality === 'good' ? '🟡 خوب' :
-                    plcData.connectionQuality === 'poor' ? '🟠 ضعیف' : '🔴 قطع'
-                  }
-                </div>
-              )}
-            </CardHeader>
-            <CardContent>
-              {plcData.status === 'success' && plcData.data ? (
-                <div className="space-y-3">
-                  {plcData.data.map((register) => (
-                    <div key={register.register} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                      <div>
-                        <div className="font-medium">{register.label}</div>
-                        <div className="text-sm text-gray-600">{register.description}</div>
-                      </div>
-                      <div className="text-left">
-                        <div className="font-bold text-lg">
-                          {formatValue(register.value, register.unit, register)}
+                {plcData.lastUpdate && (
+                  <div className="text-xs text-gray-600">
+                    آخرین داده: {formatPersianTime(plcData.lastUpdate)}
+                    {plcData.secondsAgo && (
+                      <span className="text-xs text-gray-500 mr-2">
+                        ({plcData.secondsAgo} ثانیه پیش)
+                      </span>
+                    )}
+                  </div>
+                )}
+                {plcData.connectionQuality && (
+                  <div className="text-xs">
+                    کیفیت اتصال: {
+                      plcData.connectionQuality === 'excellent' ? '🟢 عالی' :
+                      plcData.connectionQuality === 'good' ? '🟡 خوب' :
+                      plcData.connectionQuality === 'poor' ? '🟠 ضعیف' : '🔴 قطع'
+                    }
+                  </div>
+                )}
+              </CardHeader>
+              <CardContent>
+                {plcData.status === 'success' && plcData.data ? (
+                  <div className="space-y-2">
+                    {/* اطلاعات اصلی - همیشه نمایش داده می‌شود */}
+                    <div className="space-y-2">
+                      {mainRegisters.map((register) => (
+                        <div key={register.register} className="flex justify-between items-center p-2 bg-gray-50 rounded-md">
+                          <div>
+                            <div className="font-medium text-sm">{register.label}</div>
+                            <div className="text-xs text-gray-600">{register.description}</div>
+                          </div>
+                          <div className="text-left">
+                            <div className="font-bold text-sm">
+                              {formatValue(register.value, register.unit, register)}
+                            </div>
+                            <div className="text-xs text-gray-500">{register.register}</div>
+                          </div>
                         </div>
-                        <div className="text-xs text-gray-500">{register.register}</div>
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  {plcData.message}
-                  {plcData.error && (
-                    <div className="text-sm text-red-500 mt-2">{plcData.error}</div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+                    
+                    {/* دکمه نمایش اطلاعات تکمیلی */}
+                    {secondaryRegisters.length > 0 && (
+                      <div className="pt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => toggleExpanded(plcData.plc.id)}
+                          className="w-full text-xs"
+                        >
+                          {isExpanded ? (
+                            <>
+                              <ChevronUp className="w-3 h-3 mr-1" />
+                              مخفی کردن جزئیات
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="w-3 h-3 mr-1" />
+                              نمایش جزئیات بیشتر ({secondaryRegisters.length} مورد)
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {/* اطلاعات تکمیلی - فقط در صورت باز بودن نمایش داده می‌شود */}
+                    {isExpanded && secondaryRegisters.length > 0 && (
+                      <div className="space-y-2 pt-2 border-t">
+                        <div className="text-xs text-gray-600 font-medium">اطلاعات تکمیلی:</div>
+                        {secondaryRegisters.map((register) => (
+                          <div key={register.register} className="flex justify-between items-center p-2 bg-blue-50 rounded-md">
+                            <div>
+                              <div className="font-medium text-sm">{register.label}</div>
+                              <div className="text-xs text-gray-600">{register.description}</div>
+                            </div>
+                            <div className="text-left">
+                              <div className="font-bold text-sm">
+                                {formatValue(register.value, register.unit, register)}
+                              </div>
+                              <div className="text-xs text-gray-500">{register.register}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-gray-500">
+                    {plcData.message}
+                    {plcData.error && (
+                      <div className="text-sm text-red-500 mt-2">{plcData.error}</div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {autoRefresh && (

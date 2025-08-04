@@ -46,3 +46,15 @@ export const Activity: React.FC<IconProps> = ({ className = '' }) => (
     <polyline points="22,12 18,12 15,21 9,3 6,12 2,12"></polyline>
   </svg>
 );
+
+export const ChevronDown: React.FC<IconProps> = ({ className = '' }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <polyline points="6,9 12,15 18,9"></polyline>
+  </svg>
+);
+
+export const ChevronUp: React.FC<IconProps> = ({ className = '' }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <polyline points="18,15 12,9 6,15"></polyline>
+  </svg>
+);
