@@ -8,9 +8,11 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const plcName = searchParams.get('plc');
     const date = searchParams.get('date');
+    const startHour = parseInt(searchParams.get('startHour') || '0');
+    const endHour = parseInt(searchParams.get('endHour') || '24');
     const registers = searchParams.get('registers')?.split(',') || [];
 
-    console.log('📊 Params:', { plcName, date, registers });
+    console.log('📊 Params:', { plcName, date, startHour, endHour, registers });
 
     if (!plcName || !date) {
       return NextResponse.json(
@@ -67,9 +69,25 @@ export async function GET(request: NextRequest) {
       selectColumns = [...selectColumns, ...availableRegisters.map(reg => `[${reg.label}]`)];
     }
 
+    // Create WHERE clause for hour filtering
+    let whereClause = '';
+    if (startHour > 0 || endHour < 24) {
+      // Adjust for Iran timezone (UTC+3:30)
+      // If user selects hour 10, they mean 10 AM Iran time
+      // But data might be stored in UTC, so we need to convert
+      const startTime = `'${date} ${startHour.toString().padStart(2, '0')}:00:00'`;
+      const endTime = endHour === 24 
+        ? `'${date} 23:59:59'` 
+        : `'${date} ${endHour.toString().padStart(2, '0')}:00:00'`;
+      
+      // Use DATEADD to convert from UTC to Iran time (+3:30)
+      whereClause = `WHERE DATEADD(MINUTE, 210, Timestamp) >= ${startTime} AND DATEADD(MINUTE, 210, Timestamp) <= ${endTime}`;
+    }
+
     const query = `
       SELECT ${selectColumns.join(', ')} 
       FROM [${tableName}] 
+      ${whereClause}
       ORDER BY Timestamp ASC
     `;
 

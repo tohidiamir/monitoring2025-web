@@ -24,6 +24,8 @@ export default function Home() {
   const [plcs, setPLCs] = useState<PLC[]>([]);
   const [selectedPLC, setSelectedPLC] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<string>('');
+  const [startHour, setStartHour] = useState<number>(0);
+  const [endHour, setEndHour] = useState<number>(24);
   const [selectedRegisters, setSelectedRegisters] = useState<string[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -66,6 +68,8 @@ export default function Home() {
       const params = new URLSearchParams({
         plc: selectedPLC,
         date: selectedDate,
+        startHour: startHour.toString(),
+        endHour: endHour.toString(),
       });
 
       if (selectedRegisters.length > 0) {
@@ -95,7 +99,7 @@ export default function Home() {
     if (selectedPLC && selectedDate) {
       loadData();
     }
-  }, [selectedPLC, selectedDate, selectedRegisters]);
+  }, [selectedPLC, selectedDate, selectedRegisters, startHour, endHour]);
 
   const selectedPLCConfig = plcs.find(p => p.name === selectedPLC);
 
@@ -155,6 +159,62 @@ export default function Home() {
                   onDateSelect={setSelectedDate}
                   selectedDate={selectedDate}
                 />
+              )}
+
+              {/* Hour Range Selector */}
+              {selectedDate && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    بازه ساعتی
+                  </label>
+                  <div className="flex gap-2 items-center">
+                    <div className="flex-1">
+                      <label className="block text-xs text-gray-500 mb-1">از ساعت</label>
+                      <select
+                        value={startHour}
+                        onChange={(e) => {
+                          const newStartHour = Number(e.target.value);
+                          setStartHour(newStartHour);
+                          if (newStartHour >= endHour) {
+                            setEndHour(Math.min(newStartHour + 1, 24));
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        {Array.from({ length: 24 }, (_, i) => (
+                          <option key={i} value={i}>
+                            {i.toString().padStart(2, '0')}:00
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs text-gray-500 mb-1">تا ساعت</label>
+                      <select
+                        value={endHour}
+                        onChange={(e) => {
+                          const newEndHour = Number(e.target.value);
+                          setEndHour(newEndHour);
+                          if (newEndHour <= startHour) {
+                            setStartHour(Math.max(newEndHour - 1, 0));
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        {Array.from({ length: 25 }, (_, i) => (
+                          <option key={i} value={i}>
+                            {i.toString().padStart(2, '0')}:00
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="mt-2 text-xs text-gray-600 text-center">
+                    {startHour === 0 && endHour === 24 
+                      ? 'نمایش تمام ساعات روز' 
+                      : `نمایش از ساعت ${startHour.toString().padStart(2, '0')}:00 تا ${endHour === 24 ? '24:00' : endHour.toString().padStart(2, '0') + ':00'}`}
+                  </div>
+                </div>
               )}
 
               {/* Register Selection */}
