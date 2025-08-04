@@ -76,16 +76,14 @@ export async function GET(request: NextRequest) {
     // Create WHERE clause for hour filtering
     let whereClause = '';
     if (startHour > 0 || endHour < 24) {
-      // Adjust for Iran timezone (UTC+3:30)
-      // If user selects hour 10, they mean 10 AM Iran time
-      // But data might be stored in UTC, so we need to convert
+      // Data is already in Tehran time, no timezone conversion needed
       const startTime = `'${date} ${startHour.toString().padStart(2, '0')}:00:00'`;
       const endTime = endHour === 24 
         ? `'${date} 23:59:59'` 
         : `'${date} ${endHour.toString().padStart(2, '0')}:00:00'`;
       
-      // Use DATEADD to convert from UTC to Iran time (+3:30)
-      whereClause = `WHERE DATEADD(MINUTE, 210, Timestamp) >= ${startTime} AND DATEADD(MINUTE, 210, Timestamp) <= ${endTime}`;
+      // Direct comparison without timezone conversion
+      whereClause = `WHERE Timestamp >= ${startTime} AND Timestamp <= ${endTime}`;
     }
 
     const query = `
