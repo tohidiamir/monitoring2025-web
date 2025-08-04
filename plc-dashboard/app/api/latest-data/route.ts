@@ -103,7 +103,14 @@ export async function GET(request: NextRequest) {
             'D508': 'Temputare_max',
             'D513': 'Temputare_Calibre_1',
             'D514': 'Temputare_Calibre_2', 
-            'D515': 'Temputare_Calibre_3'
+            'D515': 'Temputare_Calibre_3',
+            'D516': 'Temputare_Calibre_4',
+            'D520': 'Time_Main',
+            'D521': 'Time_Minute_Run',
+            'D522': 'Time_Second_Run',
+            'D525': 'GREEN',
+            'D526': 'RED',
+            'D527': 'YELLOW'
           };
           
           const formattedData = plc.database_registers.map(register => {
@@ -171,5 +178,7 @@ export async function GET(request: NextRequest) {
 function getUnitForRegister(register: string): string {
   if (register.includes('Pressure')) return 'بار';
   if (register.includes('Temputare')) return '°C';
+  if (register.includes('Time')) return 'دقیقه';
+  if (register.includes('GREEN') || register.includes('RED') || register.includes('YELLOW')) return '';
   return '';
 }
