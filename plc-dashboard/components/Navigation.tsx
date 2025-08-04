@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Activity } from '@/components/ui/icons';
+import { BarChart3, Activity, FileText } from '@/components/ui/icons';
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -19,6 +19,12 @@ export default function Navigation() {
       label: 'نمایش زنده',
       icon: Activity,
       isActive: pathname === '/live'
+    },
+    {
+      href: '/logs',
+      label: 'لاگ‌های اتوکلاو',
+      icon: FileText,
+      isActive: pathname === '/logs'
     }
   ];
 
