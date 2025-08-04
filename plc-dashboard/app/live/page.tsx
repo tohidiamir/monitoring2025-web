@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, AlertCircle, CheckCircle, Clock, ChevronDown, ChevronUp } from '@/components/ui/icons';
+import { formatPersianTime, formatRelativeTime, formatCurrentPersianTime } from '@/lib/timeUtils';
 
 interface RegisterData {
   register: string;
@@ -102,18 +103,6 @@ export default function LiveDataPage() {
     // بقیه اطلاعات (غیر از اطلاعات اصلی)
     const mainRegisterNames = ['D500', 'D502', 'D520', 'D521', 'D522', 'D525', 'D526', 'D527'];
     return data.filter(register => !mainRegisterNames.includes(register.register));
-  };
-
-  const formatPersianTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('fa-IR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
   };
 
   const getStatusBadge = (status: string, connectionQuality?: string, secondsAgo?: number) => {
@@ -219,7 +208,7 @@ export default function LiveDataPage() {
 
       {lastRefresh && (
         <div className="text-sm text-gray-600 mb-4">
-          آخرین بروزرسانی: {formatPersianTime(lastRefresh.toISOString())}
+          آخرین بروزرسانی: {formatCurrentPersianTime()}
         </div>
       )}
 
@@ -241,29 +230,79 @@ export default function LiveDataPage() {
           const secondaryRegisters = plcData.data ? getSecondaryRegisters(plcData.data) : [];
           
           return (
-            <Card key={plcData.plc.id} className="h-fit">
-              <CardHeader className="pb-3">
+            <Card key={plcData.plc.id} className="h-fit shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <CardHeader className="pb-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
                 <div className="flex justify-between items-center">
-                  <CardTitle className="text-lg">{plcData.plc.displayName}</CardTitle>
+                  <CardTitle className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    {plcData.plc.displayName}
+                  </CardTitle>
                   {getStatusBadge(plcData.status, plcData.connectionQuality, plcData.secondsAgo)}
                 </div>
                 {plcData.lastUpdate && (
-                  <div className="text-xs text-gray-600">
-                    آخرین داده: {formatPersianTime(plcData.lastUpdate)}
+                  <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded-md border-l-4 border-blue-400">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-blue-500" />
+                      <span className="font-medium">آخرین داده:</span>
+                    </div>
+                    <div className="mt-1 font-mono text-gray-800">
+                      {formatPersianTime(plcData.lastUpdate)}
+                    </div>
                     {plcData.secondsAgo && (
-                      <span className="text-xs text-gray-500 mr-2">
-                        ({plcData.secondsAgo} ثانیه پیش)
-                      </span>
+                      <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                        <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                        {formatRelativeTime(plcData.lastUpdate)}
+                      </div>
                     )}
                   </div>
                 )}
                 {plcData.connectionQuality && (
-                  <div className="text-xs">
-                    کیفیت اتصال: {
-                      plcData.connectionQuality === 'excellent' ? '🟢 عالی' :
-                      plcData.connectionQuality === 'good' ? '🟡 خوب' :
-                      plcData.connectionQuality === 'poor' ? '🟠 ضعیف' : '🔴 قطع'
-                    }
+                  <div className="text-xs bg-white p-2 rounded-md border">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">کیفیت اتصال:</span>
+                      <div className="flex items-center gap-1">
+                        {plcData.connectionQuality === 'excellent' && (
+                          <>
+                            <div className="flex gap-1">
+                              <div className="w-2 h-4 bg-green-500 rounded"></div>
+                              <div className="w-2 h-4 bg-green-500 rounded"></div>
+                              <div className="w-2 h-4 bg-green-500 rounded"></div>
+                            </div>
+                            <span className="text-green-600 font-medium mr-1">عالی</span>
+                          </>
+                        )}
+                        {plcData.connectionQuality === 'good' && (
+                          <>
+                            <div className="flex gap-1">
+                              <div className="w-2 h-4 bg-yellow-500 rounded"></div>
+                              <div className="w-2 h-4 bg-yellow-500 rounded"></div>
+                              <div className="w-2 h-4 bg-gray-300 rounded"></div>
+                            </div>
+                            <span className="text-yellow-600 font-medium mr-1">خوب</span>
+                          </>
+                        )}
+                        {plcData.connectionQuality === 'poor' && (
+                          <>
+                            <div className="flex gap-1">
+                              <div className="w-2 h-4 bg-orange-500 rounded"></div>
+                              <div className="w-2 h-4 bg-gray-300 rounded"></div>
+                              <div className="w-2 h-4 bg-gray-300 rounded"></div>
+                            </div>
+                            <span className="text-orange-600 font-medium mr-1">ضعیف</span>
+                          </>
+                        )}
+                        {plcData.connectionQuality === 'offline' && (
+                          <>
+                            <div className="flex gap-1">
+                              <div className="w-2 h-4 bg-red-500 rounded"></div>
+                              <div className="w-2 h-4 bg-gray-300 rounded"></div>
+                              <div className="w-2 h-4 bg-gray-300 rounded"></div>
+                            </div>
+                            <span className="text-red-600 font-medium mr-1">قطع</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
               </CardHeader>

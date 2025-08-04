@@ -11,6 +11,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { formatPersianTime } from '@/lib/timeUtils';
 
 interface Register {
   register: string;
@@ -36,15 +37,20 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
   // Process data for chart
   const chartData = useMemo(() => {
     return data.map((item) => {
+      // Convert timestamp to Iran time
       const timestamp = new Date(item.Timestamp);
+      
       return {
         ...item,
         time: timestamp.toLocaleTimeString('fa-IR', { 
           hour: '2-digit', 
           minute: '2-digit',
-          second: '2-digit'
+          second: '2-digit',
+          timeZone: 'Utc'
         }),
-        fullTime: timestamp.toLocaleString('fa-IR'),
+        fullTime: timestamp.toLocaleString('fa-IR', {
+          timeZone: 'Utc'
+        }),
       };
     });
   }, [data]);
