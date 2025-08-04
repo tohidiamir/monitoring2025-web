@@ -246,7 +246,7 @@ export default function LiveDataPage() {
                       <span className="font-medium">آخرین داده:</span>
                     </div>
                     <div className="mt-1 text-gray-800 font-medium">
-                      {formatPersianTime(plcData.lastUpdate)}
+                      {(plcData.lastUpdate)}
                     </div>
                     {plcData.secondsAgo && (
                       <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
