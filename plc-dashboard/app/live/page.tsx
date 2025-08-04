@@ -74,11 +74,11 @@ export default function LiveDataPage() {
     fetchLatestData();
   }, []);
 
-  // Auto refresh every 30 seconds
+  // Auto refresh every 2 seconds
   useEffect(() => {
     if (!autoRefresh) return;
     
-    const interval = setInterval(fetchLatestData, 30000);
+    const interval = setInterval(fetchLatestData, 2000); // 2 seconds
     return () => clearInterval(interval);
   }, [autoRefresh]);
 
@@ -181,7 +181,7 @@ export default function LiveDataPage() {
             size="sm"
           >
             <Clock className="w-4 h-4 mr-2" />
-            {autoRefresh ? 'خودکار' : 'دستی'}
+            {autoRefresh ? 'خودکار (2 ثانیه)' : 'دستی'}
           </Button>
           <Button 
             onClick={fetchLatestData} 
@@ -328,7 +328,7 @@ export default function LiveDataPage() {
         <div className="fixed bottom-4 left-4">
           <Badge variant="outline" className="bg-white">
             <Clock className="w-3 h-3 mr-1" />
-            بروزرسانی خودکار فعال
+            بروزرسانی خودکار فعال (هر 2 ثانیه)
           </Badge>
         </div>
       )}
