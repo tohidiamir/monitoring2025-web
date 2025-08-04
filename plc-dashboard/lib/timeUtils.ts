@@ -1,21 +1,22 @@
 // Utility functions for time conversion and formatting
 
-// Format time in Persian format with Iran timezone
+// Format time in Persian format without timezone conversion
 export function formatPersianTime(dateString: string | null): string {
   if (!dateString) return 'نامشخص';
   
   try {
     const date = new Date(dateString);
     
-    return date.toLocaleString('fa-IR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      timeZone: 'Utc' // Automatically handles timezone conversion
-    });
+    // Manual formatting without timezone conversion, using English digits
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hour = String(date.getHours()).padStart(2, '0');
+    const minute = String(date.getMinutes()).padStart(2, '0');
+    const second = String(date.getSeconds()).padStart(2, '0');
+    
+    // Use English digits for better readability
+    return `${year}/${month}/${day}, ${hour}:${minute}:${second}`;
   } catch (error) {
     console.error('Error formatting time:', error);
     return 'نامشخص';

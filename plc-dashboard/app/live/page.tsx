@@ -245,13 +245,20 @@ export default function LiveDataPage() {
                       <Clock className="w-4 h-4 text-blue-500" />
                       <span className="font-medium">آخرین داده:</span>
                     </div>
-                    <div className="mt-1 font-mono text-gray-800">
+                    <div className="mt-1 text-gray-800 font-medium">
                       {formatPersianTime(plcData.lastUpdate)}
                     </div>
                     {plcData.secondsAgo && (
                       <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                         <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                        {formatRelativeTime(plcData.lastUpdate)}
+                        {plcData.secondsAgo < 60 
+                          ? `${plcData.secondsAgo} ثانیه پیش`
+                          : plcData.secondsAgo < 3600
+                          ? `${Math.floor(plcData.secondsAgo / 60)} دقیقه پیش`
+                          : plcData.secondsAgo < 86400
+                          ? `${Math.floor(plcData.secondsAgo / 3600)} ساعت پیش`
+                          : `${Math.floor(plcData.secondsAgo / 86400)} روز پیش`
+                        }
                       </div>
                     )}
                   </div>
