@@ -36,12 +36,23 @@ export async function GET(request: NextRequest) {
           const latestTable = tablesResult.recordset[0].TABLE_NAME;
           console.log(`📊 Latest table for ${plc.displayName}: ${latestTable}`);
           
+          // First, let's see what columns exist in the table
+          const columnsQuery = `
+            SELECT COLUMN_NAME 
+            FROM INFORMATION_SCHEMA.COLUMNS 
+            WHERE TABLE_NAME = '${latestTable}'
+          `;
+          
+          const columnsResult = await pool.request().query(columnsQuery);
+          const availableColumns = columnsResult.recordset.map(row => row.COLUMN_NAME);
+          console.log(`📋 Available columns in ${latestTable}:`, availableColumns);
+          
           // Get the latest record from this table
           const dataQuery = `
             SELECT TOP 1 *, 
-                   DATEDIFF(second, timestamp, GETDATE()) as seconds_ago
+                   DATEDIFF(second, Timestamp, GETDATE()) as seconds_ago
             FROM [${latestTable}]
-            ORDER BY timestamp DESC
+            ORDER BY Timestamp DESC
           `;
           
           const dataResult = await pool.request().query(dataQuery);
@@ -59,6 +70,14 @@ export async function GET(request: NextRequest) {
           const latestRecord = dataResult.recordset[0];
           const secondsAgo = latestRecord.seconds_ago;
           
+          // Log the actual data we received
+          console.log(`📊 Latest record for ${plc.displayName}:`, {
+            timestamp: latestRecord.Timestamp,
+            secondsAgo: secondsAgo,
+            pressure: latestRecord.Pressure,
+            temp_main: latestRecord.Temputare_main
+          });
+          
           // Determine connection status based on how recent the data is
           let connectionStatus = 'success';
           let statusMessage = 'متصل - داده‌های تازه';
@@ -71,9 +90,26 @@ export async function GET(request: NextRequest) {
             statusMessage = 'اتصال ضعیف - داده‌های تأخیری';
           }
           
-          // Format the data with Persian labels
+          // Format the data with Persian labels - map register names to database column names
+          const registerMapping = {
+            'D500': 'Pressure',
+            'D501': 'Pressure_min', 
+            'D502': 'Temputare_main',
+            'D503': 'Temputare_1',
+            'D504': 'Temputare_2', 
+            'D505': 'Temputare_3',
+            'D506': 'Temputare_4',
+            'D507': 'Temputare_min',
+            'D508': 'Temputare_max',
+            'D513': 'Temputare_Calibre_1',
+            'D514': 'Temputare_Calibre_2', 
+            'D515': 'Temputare_Calibre_3'
+          };
+          
           const formattedData = plc.database_registers.map(register => {
-            const value = latestRecord[register.register];
+            const dbColumnName = registerMapping[register.register] || register.register;
+            const value = latestRecord[dbColumnName];
+            console.log(`🔍 Register ${register.register} -> DB Column ${dbColumnName} for ${plc.displayName}: ${value} (type: ${typeof value})`);
             return {
               register: register.register,
               label: register.labelFa,
@@ -88,7 +124,7 @@ export async function GET(request: NextRequest) {
             status: connectionStatus,
             message: statusMessage,
             data: formattedData,
-            lastUpdate: latestRecord.timestamp,
+            lastUpdate: latestRecord.Timestamp, // Use correct column name
             tableName: latestTable,
             secondsAgo: secondsAgo,
             isOnline: secondsAgo <= 60,
