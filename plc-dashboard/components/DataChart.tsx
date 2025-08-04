@@ -151,9 +151,9 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
               style={{ backgroundColor: colors[index % colors.length] }}
             ></div>
             <div>
-              <div className="font-medium">{register.label}</div>
+              <div className="font-medium">{register.labelFa || register.label}</div>
               <div className="text-xs text-gray-500">
-                {register.register} - {register.description}
+                 {register.descriptionFa || register.description}
               </div>
             </div>
           </div>
@@ -175,7 +175,7 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
 
           return (
             <div key={register.label} className="bg-white border rounded p-3">
-              <h4 className="font-medium text-sm mb-2">{register.label}</h4>
+              <h4 className="font-medium text-sm mb-2">{register.labelFa || register.label}</h4>
               <div className="space-y-1 text-xs text-gray-600">
                 <div>حداقل: {min.toLocaleString('fa-IR')}</div>
                 <div>حداکثر: {max.toLocaleString('fa-IR')}</div>

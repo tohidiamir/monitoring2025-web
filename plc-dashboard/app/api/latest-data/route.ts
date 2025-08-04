@@ -131,8 +131,8 @@ export async function GET(request: NextRequest) {
             
             return {
               register: register.register,
-              label: register.labelFa,
-              description: register.descriptionFa,
+              label: register.label,
+              description: register.description,
               value: displayValue,
               unit: getUnitForRegister(register.register),
               isLight: register.register === 'D525' || register.register === 'D526' || register.register === 'D527'

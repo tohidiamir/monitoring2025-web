@@ -259,7 +259,6 @@ export default function LiveDataPage() {
                             <div className="font-bold text-sm">
                               {formatValue(register.value, register.unit, register)}
                             </div>
-                            <div className="text-xs text-gray-500">{register.register}</div>
                           </div>
                         </div>
                       ))}
@@ -303,7 +302,6 @@ export default function LiveDataPage() {
                               <div className="font-bold text-sm">
                                 {formatValue(register.value, register.unit, register)}
                               </div>
-                              <div className="text-xs text-gray-500">{register.register}</div>
                             </div>
                           </div>
                         ))}
