@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Navigation from '@/components/Navigation';
 import PLCSelector from '@/components/PLCSelector';
 import DateSelector from '@/components/DateSelector';
 import DataChart from '@/components/DataChart';
@@ -99,24 +100,26 @@ export default function Home() {
   const selectedPLCConfig = plcs.find(p => p.name === selectedPLC);
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4" dir="rtl">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8 text-center">
-          🏭 داشبورد مانیتورینگ اتوکلاو
-          {selectedPLCConfig && (
-            <span className="block text-xl text-blue-600 mt-2">
-              {selectedPLCConfig.displayName || selectedPLCConfig.name}
-            </span>
+    <div className="min-h-screen bg-gray-100">
+      <Navigation />
+      <div className="p-4" dir="rtl">
+        <div className="max-w-7xl mx-auto">
+          <h1 className="text-3xl font-bold text-gray-900 mb-8 text-center">
+            🏭 داشبورد مانیتورینگ اتوکلاو
+            {selectedPLCConfig && (
+              <span className="block text-xl text-blue-600 mt-2">
+                {selectedPLCConfig.displayName || selectedPLCConfig.name}
+              </span>
+            )}
+          </h1>
+
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              ❌ {error}
+            </div>
           )}
-        </h1>
 
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            ❌ {error}
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* PLC Selection Panel */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-md p-6">
@@ -243,6 +246,7 @@ export default function Home() {
               🕒 آخرین بروزرسانی: {new Date().toLocaleString('fa-IR')}
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>
