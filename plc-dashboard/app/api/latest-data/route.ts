@@ -187,11 +187,21 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Helper function to get unit for each register
+// Helper function to get unit for each register based on Persian label
 function getUnitForRegister(register: string): string {
-  if (register.includes('Pressure')) return 'بار';
-  if (register.includes('Temputare')) return '°C';
-  if (register.includes('Time')) return 'دقیقه';
-  if (register.includes('GREEN') || register.includes('RED') || register.includes('YELLOW')) return '';
+  // Get the register config to check the Persian label
+  const allRegisters = PLC_CONFIG.flatMap(plc => plc.database_registers);
+  const registerConfig = allRegisters.find(r => r.register === register);
+  
+  if (!registerConfig) return '';
+  
+  const label = registerConfig.labelFa.toLowerCase();
+  
+  // Check Persian labels for unit determination
+  if (label.includes('فشار')) return 'بار';
+  if (label.includes('دما')) return '°C';
+  if (label.includes('زمان') || label.includes('دقیقه') || label.includes('ثانیه')) return 'دقیقه';
+  if (label.includes('سبز') || label.includes('قرمز') || label.includes('زرد')) return '';
+  
   return '';
 }
