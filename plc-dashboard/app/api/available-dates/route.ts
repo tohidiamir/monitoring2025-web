@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getDbConnection } from '@/lib/database';
 
+// Force dynamic rendering for this API route
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // تابع تبدیل تاریخ میلادی به شمسی
 function convertToPersianDate(gregorianDate: Date): string {
   let gYear = gregorianDate.getFullYear();
