@@ -223,7 +223,7 @@ export default function LiveDataPage() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {latestData.map((plcData) => {
           const isExpanded = expandedCards.has(plcData.plc.id);
           const mainRegisters = plcData.data ? getMainRegisters(plcData.data) : [];
