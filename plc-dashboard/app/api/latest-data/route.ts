@@ -117,12 +117,25 @@ export async function GET(request: NextRequest) {
             const dbColumnName = registerMapping[register.register] || register.register;
             const value = latestRecord[dbColumnName];
             console.log(`🔍 Register ${register.register} -> DB Column ${dbColumnName} for ${plc.displayName}: ${value} (type: ${typeof value})`);
+            
+            // Special handling for light indicators
+            let displayValue = value;
+            if (register.register === 'D525' || register.register === 'D526' || register.register === 'D527') {
+              // For lights: convert 0/1 to active/inactive status
+              displayValue = (value === 1 || value === '1') ? 'فعال' : 'غیرفعال';
+            } else if (value !== null && value !== undefined) {
+              displayValue = value;
+            } else {
+              displayValue = 'N/A';
+            }
+            
             return {
               register: register.register,
               label: register.labelFa,
               description: register.descriptionFa,
-              value: value !== null && value !== undefined ? value : 'N/A',
-              unit: getUnitForRegister(register.register)
+              value: displayValue,
+              unit: getUnitForRegister(register.register),
+              isLight: register.register === 'D525' || register.register === 'D526' || register.register === 'D527'
             };
           });
           

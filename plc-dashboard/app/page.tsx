@@ -164,7 +164,9 @@ export default function Home() {
                     انتخاب رجیسترها ({selectedRegisters.length} انتخاب شده)
                   </label>
                   <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-md p-2">
-                    {selectedPLCConfig.database_registers.map((register) => (
+                    {selectedPLCConfig.database_registers
+                      .filter(register => !['D525', 'D526', 'D527'].includes(register.register)) // Filter out lights
+                      .map((register) => (
                       <div key={register.register} className="flex items-center mb-2">
                         <input
                           type="checkbox"

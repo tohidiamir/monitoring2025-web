@@ -13,6 +13,7 @@ interface RegisterData {
   description: string;
   value: any;
   unit: string;
+  isLight?: boolean;
 }
 
 interface PlcLatestData {
@@ -111,10 +112,36 @@ export default function LiveDataPage() {
     }
   };
 
-  const formatValue = (value: any, unit: string) => {
+  const formatValue = (value: any, unit: string, register: RegisterData) => {
     if (value === null || value === undefined || value === 'N/A') {
       return 'N/A';
     }
+    
+    // Special formatting for lights
+    if (register.isLight) {
+      const isActive = value === 'فعال';
+      let lightColor = '';
+      let lightIcon = '';
+      
+      if (register.register === 'D525') { // GREEN
+        lightColor = isActive ? 'text-green-600' : 'text-gray-400';
+        lightIcon = '🟢';
+      } else if (register.register === 'D526') { // RED  
+        lightColor = isActive ? 'text-red-600' : 'text-gray-400';
+        lightIcon = '🔴';
+      } else if (register.register === 'D527') { // YELLOW
+        lightColor = isActive ? 'text-yellow-600' : 'text-gray-400'; 
+        lightIcon = '🟡';
+      }
+      
+      return (
+        <span className={`${lightColor} font-medium flex items-center`}>
+          <span className="mr-1">{lightIcon}</span>
+          {value}
+        </span>
+      );
+    }
+    
     return `${value} ${unit}`;
   };
 
@@ -200,7 +227,7 @@ export default function LiveDataPage() {
                       </div>
                       <div className="text-left">
                         <div className="font-bold text-lg">
-                          {formatValue(register.value, register.unit)}
+                          {formatValue(register.value, register.unit, register)}
                         </div>
                         <div className="text-xs text-gray-500">{register.register}</div>
                       </div>
