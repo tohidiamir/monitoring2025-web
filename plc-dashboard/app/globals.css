@@ -2,9 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Import Vazir Font */
-@import url('/fonts/vazir.css');
-
 :root {
   --background: #ffffff;
   --foreground: #171717;
