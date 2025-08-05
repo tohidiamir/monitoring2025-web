@@ -36,7 +36,10 @@ export async function GET(request: NextRequest) {
 
     // Connect to database
     const pool = await getDbConnection();
-    const tableName = `PLC_Data_${plcName}_${date}`;
+    
+    // Convert date format from YYYY-MM-DD to YYYYMMDD for table name
+    const dateForTable = date.replace(/-/g, '');
+    const tableName = `PLC_Data_${plcName}_${dateForTable}`;
 
     console.log(`🔍 Checking if table exists: ${tableName}`);
 
