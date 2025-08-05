@@ -12,6 +12,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { formatPersianTime } from '@/lib/timeUtils';
+import { applyPressureTemperatureMultiplier, isPressureOrTemperatureRegister } from '@/lib/registerUtils';
 
 interface Register {
   register: string;
@@ -40,7 +41,8 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
       // Convert timestamp to Iran time
       const timestamp = new Date(item.Timestamp);
       
-      return {
+      // Create a new item with processed values
+      const processedItem = {
         ...item,
         time: timestamp.toLocaleTimeString('fa-IR', { 
           hour: '2-digit', 
@@ -52,8 +54,25 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
           timeZone: 'Utc'
         }),
       };
+
+      // Apply 0.1 multiplier to pressure and temperature values
+      registers.forEach(register => {
+        if (isPressureOrTemperatureRegister(register.register, register.label, register.labelFa)) {
+          const originalValue = item[register.label];
+          if (originalValue !== null && originalValue !== undefined && !isNaN(Number(originalValue))) {
+            processedItem[register.label] = Number(applyPressureTemperatureMultiplier(
+              originalValue, 
+              register.register, 
+              register.label, 
+              register.labelFa
+            ));
+          }
+        }
+      });
+
+      return processedItem;
     });
-  }, [data]);
+  }, [data, registers]);
 
   // Get registers to display
   const displayRegisters = useMemo(() => {
@@ -117,8 +136,16 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
                 // پیدا کردن رجیستر مربوطه برای نمایش نام فارسی
                 const register = registers.find(r => name.includes(r.label));
                 const displayName = register ? (register.labelFa || register.label) : name;
+                
+                // Format the value properly
+                const numValue = Number(value);
+                const formattedValue = isNaN(numValue) ? value : numValue.toLocaleString('fa-IR', {
+                  minimumFractionDigits: 1,
+                  maximumFractionDigits: 1
+                });
+                
                 return [
-                  `${Number(value).toLocaleString('fa-IR')}`,
+                  formattedValue,
                   displayName
                 ];
               }}
@@ -236,13 +263,27 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
           const max = Math.max(...values);
           const avg = values.reduce((a, b) => a + b, 0) / values.length;
 
+          // Check if this is a pressure or temperature register for proper formatting
+          const isPressureOrTemp = isPressureOrTemperatureRegister(
+            register.register, 
+            register.label, 
+            register.labelFa
+          );
+
+          const formatValue = (val: number) => {
+            if (isPressureOrTemp) {
+              return val.toLocaleString('fa-IR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+            }
+            return val.toLocaleString('fa-IR');
+          };
+
           return (
             <div key={register.label} className="bg-white border rounded p-3">
               <h4 className="font-medium text-sm mb-2">{register.labelFa}</h4>
               <div className="space-y-1 text-xs text-gray-600">
-                <div>حداقل: {min.toLocaleString('fa-IR')}</div>
-                <div>حداکثر: {max.toLocaleString('fa-IR')}</div>
-                <div>میانگین: {avg.toFixed(2).toLocaleString()}</div>
+                <div>حداقل: {formatValue(min)}</div>
+                <div>حداکثر: {formatValue(max)}</div>
+                <div>میانگین: {formatValue(avg)}</div>
               </div>
             </div>
           );

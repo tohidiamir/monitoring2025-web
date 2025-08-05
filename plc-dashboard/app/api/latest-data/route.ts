@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDbConnection, PLC_CONFIG } from '@/lib/database';
+import { applyPressureTemperatureMultiplier } from '@/lib/registerUtils';
 
 // Force dynamic rendering for this API route
 export const dynamic = 'force-dynamic';
@@ -128,7 +129,18 @@ export async function GET(request: NextRequest) {
               // For lights: convert 0/1 to active/inactive status
               displayValue = (value === 1 || value === '1') ? 'فعال' : 'غیرفعال';
             } else if (value !== null && value !== undefined) {
-              displayValue = value;
+              // Apply 0.1 multiplier for pressure and temperature values
+              const processedValue = applyPressureTemperatureMultiplier(
+                value, 
+                register.register, 
+                register.label, 
+                register.labelFa
+              );
+              if (processedValue === 'N/A') {
+                displayValue = 'N/A';
+              } else {
+                displayValue = Number(processedValue).toFixed(1);
+              }
             } else {
               displayValue = 'N/A';
             }
