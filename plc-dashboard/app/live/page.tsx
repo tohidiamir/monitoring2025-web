@@ -179,12 +179,17 @@ export default function LiveDataPage() {
     
     // Check if this is a pressure or temperature value that already has 0.1 multiplier applied
     const numValue = Number(value);
-    if (!isNaN(numValue) && (unit === 'بار' || unit === '°C')) {
-      // Value already has 0.1 multiplier applied from API, just format it nicely
-      return `${numValue.toLocaleString('fa-IR', { 
-        minimumFractionDigits: 1, 
-        maximumFractionDigits: 1 
-      })} ${unit}`;
+    if (!isNaN(numValue)) {
+      if (unit === 'بار' || unit === '°C') {
+        // Value already has 0.1 multiplier applied from API, format with 1 decimal place
+        return `${numValue.toLocaleString('fa-IR', { 
+          minimumFractionDigits: 1, 
+          maximumFractionDigits: 1 
+        })} ${unit}`;
+      } else {
+        // For time and other values, show as integer without decimals
+        return `${Math.round(numValue).toLocaleString('fa-IR')} ${unit}`;
+      }
     }
     
     return `${value} ${unit}`;

@@ -93,13 +93,13 @@ export function formatRegisterValue(
   }
   
   if (isPressureOrTemperatureRegister(register, label, labelFa)) {
-    // Show 1 decimal place for pressure and temperature
+    // Show 1 decimal place for pressure and temperature only
     return numValue.toLocaleString('fa-IR', {
       minimumFractionDigits: 1,
       maximumFractionDigits: 1
     });
   }
   
-  // For other values, show without decimals
-  return numValue.toLocaleString('fa-IR');
+  // For time and other values, show without decimals as integers
+  return Math.round(numValue).toLocaleString('fa-IR');
 }

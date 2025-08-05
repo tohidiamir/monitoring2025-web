@@ -139,10 +139,20 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
                 
                 // Format the value properly
                 const numValue = Number(value);
-                const formattedValue = isNaN(numValue) ? value : numValue.toLocaleString('fa-IR', {
-                  minimumFractionDigits: 1,
-                  maximumFractionDigits: 1
-                });
+                let formattedValue;
+                
+                if (isNaN(numValue)) {
+                  formattedValue = value;
+                } else if (register && isPressureOrTemperatureRegister(register.register, register.label, register.labelFa)) {
+                  // Format pressure and temperature with 1 decimal place
+                  formattedValue = numValue.toLocaleString('fa-IR', {
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 1
+                  });
+                } else {
+                  // Format time and other values as integers
+                  formattedValue = Math.round(numValue).toLocaleString('fa-IR');
+                }
                 
                 return [
                   formattedValue,
@@ -274,7 +284,8 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
             if (isPressureOrTemp) {
               return val.toLocaleString('fa-IR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
             }
-            return val.toLocaleString('fa-IR');
+            // For time and other values, show as integer
+            return Math.round(val).toLocaleString('fa-IR');
           };
 
           return (

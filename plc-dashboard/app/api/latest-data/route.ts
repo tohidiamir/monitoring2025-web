@@ -138,8 +138,12 @@ export async function GET(request: NextRequest) {
               );
               if (processedValue === 'N/A') {
                 displayValue = 'N/A';
-              } else {
+              } else if (processedValue !== Number(value)) {
+                // Only format with decimal if multiplier was applied (pressure/temperature)
                 displayValue = Number(processedValue).toFixed(1);
+              } else {
+                // For non-pressure/temperature values, keep as integer
+                displayValue = value;
               }
             } else {
               displayValue = 'N/A';
