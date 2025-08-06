@@ -104,7 +104,10 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
   // Get registers to display
   const displayRegisters = useMemo(() => {
     if (selectedRegisters.length > 0) {
-      const filtered = registers.filter(reg => selectedRegisters.includes(reg.label));
+      // Filter registers based on label match (support both English and Persian labels)
+      const filtered = registers.filter(reg => 
+        selectedRegisters.includes(reg.label) || selectedRegisters.includes(reg.labelFa)
+      );
       return filtered;
     }
     return registers;

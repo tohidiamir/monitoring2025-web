@@ -101,15 +101,16 @@ export default function PLCDetailsPage() {
       // Format date for API (YYYY-MM-DD) - use current date since data is within same day
       const date = now.toISOString().split('T')[0];
       
-      // Get hours for API (0-23)
+      // Get hours for API (0-23) - add 1 hour to end time
       const currentHour = now.getHours();
+      const endHour = Math.min(currentHour + 1, 23); // Add 1 hour but don't exceed 23
       const startHour = twoHoursAgo.getHours();
       
       const params = new URLSearchParams({
         plc: plcName,
         date: date,
         startHour: startHour.toString(),
-        endHour: currentHour.toString()
+        endHour: endHour.toString()
       });
 
       const response = await fetch(`/api/data?${params.toString()}`);
