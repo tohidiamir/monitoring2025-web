@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getDbConnection, PLC_CONFIG } from '@/lib/database';
+
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
 
 interface TemperatureReading {
   timestamp: string;
@@ -119,7 +123,8 @@ function detectSterilizationProcesses(data: TemperatureReading[]): Sterilization
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    // Extract search params without using request.url directly
+    const { searchParams } = request.nextUrl;
     const plcName = searchParams.get('plc');
     const date = searchParams.get('date');
 
@@ -130,44 +135,88 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // استفاده از API موجود برای دریافت داده‌ها
-    const baseUrl = process.env.NODE_ENV === 'development' 
-      ? 'http://localhost:3000' 
-      : request.nextUrl.origin;
-      
-    const dataResponse = await fetch(
-      `${baseUrl}/api/data?plc=${plcName}&date=${date}&registers=Temputare_main,Temputare_1,Temputare_2,Temputare_3,Temputare_4`,
-      { method: 'GET' }
-    );
-
-    if (!dataResponse.ok) {
+    // Find PLC config
+    const plcConfig = PLC_CONFIG.find(p => p.name === plcName);
+    if (!plcConfig) {
       return NextResponse.json({ 
         success: false, 
-        error: 'Failed to fetch temperature data' 
+        error: 'PLC not found' 
       });
     }
 
-    const dataResult = await dataResponse.json();
+    // Connect to database directly
+    const pool = await getDbConnection();
+    
+    // Convert date format from YYYY-MM-DD to YYYYMMDD for table name
+    const dateForTable = date.replace(/-/g, '');
+    const tableName = `PLC_Data_${plcName}_${dateForTable}`;
 
-    if (!dataResult.success || !dataResult.data || dataResult.data.length === 0) {
+    // Check if table exists
+    const tableExistsQuery = `
+      SELECT COUNT(*) as count 
+      FROM INFORMATION_SCHEMA.TABLES 
+      WHERE TABLE_NAME = '${tableName}'
+    `;
+
+    const tableExistsResult = await pool.request().query(tableExistsQuery);
+    
+    if (tableExistsResult.recordset[0].count === 0) {
       return NextResponse.json({ 
         success: true, 
         processes: [],
-        message: dataResult.error || 'No data found for the specified date' 
+        message: 'No data found for the specified date' 
       });
     }
 
-    // تبدیل داده‌ها به فرمت مورد نیاز
-    const temperatureData: TemperatureReading[] = dataResult.data.map((row: any) => {
+    // Query temperature data directly from database
+    const temperatureColumns = ['Temputare_main', 'Temputare_1', 'Temputare_2', 'Temputare_3', 'Temputare_4'];
+    const availableColumns = [];
+    
+    // Check which temperature columns exist
+    for (const col of temperatureColumns) {
+      try {
+        const checkQuery = `
+          SELECT COUNT(*) as count 
+          FROM INFORMATION_SCHEMA.COLUMNS 
+          WHERE TABLE_NAME = '${tableName}' AND COLUMN_NAME = '${col}'
+        `;
+        const result = await pool.request().query(checkQuery);
+        if (result.recordset[0].count > 0) {
+          availableColumns.push(col);
+        }
+      } catch (error) {
+        console.log(`Column ${col} not found`);
+      }
+    }
+
+    if (availableColumns.length === 0) {
+      return NextResponse.json({ 
+        success: true, 
+        processes: [],
+        message: 'No temperature columns found' 
+      });
+    }
+
+    // Query data from database
+    const query = `
+      SELECT Timestamp, ${availableColumns.join(', ')}
+      FROM [${tableName}]
+      WHERE ${availableColumns.map(col => `${col} IS NOT NULL AND ${col} > 0`).join(' OR ')}
+      ORDER BY Timestamp ASC
+    `;
+
+    const result = await pool.request().query(query);
+
+    // Convert data to temperature readings
+    const temperatureData: TemperatureReading[] = result.recordset.map((row: any) => {
       // انتخاب اولین ستون دما موجود
-      const tempValue = row.Temputare_main || row.Temputare_1 || row.Temputare_2 || 
-                       row.Temputare_3 || row.Temputare_4 || 0;
+      const tempValue = availableColumns.reduce((acc, col) => acc || row[col], 0);
       
       // تبدیل دما از فرمت PLC (مثلاً 290) به درجه سیلسیوس (29.0)
       const actualTemp = (parseFloat(tempValue) || 0) / 10;
       
       return {
-        timestamp: row.Timestamp || row.timestamp, // هر دو فرمت timestamp را پشتیبانی می‌کند
+        timestamp: row.Timestamp,
         temperature: actualTemp
       };
     }).filter((item: TemperatureReading) => item.temperature > 0);
