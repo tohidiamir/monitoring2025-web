@@ -98,7 +98,7 @@ export default function PLCDetailsPage() {
     }
   };
 
-  // Fetch historical data for chart (last 1 hour)
+  // Fetch historical data for chart (last 2 hours)
   const fetchHistoricalData = async () => {
     if (!plcName) {
       console.warn('No plcName provided for historical data');
@@ -108,16 +108,16 @@ export default function PLCDetailsPage() {
     try {
       setChartLoading(true);
       
-      // Get current time and 1 hour ago
+      // Get current time and 2 hours ago
       const now = new Date();
-      const oneHourAgo = new Date(now.getTime() - (1 * 60 * 60 * 1000));
+      const twoHoursAgo = new Date(now.getTime() - (2 * 60 * 60 * 1000));
       
       // Format date for API (YYYY-MM-DD) - use current date since data is within same day
       const date = now.toISOString().split('T')[0];
       
       // Get hours for API (0-23)
       const currentHour = now.getHours();
-      const startHour = oneHourAgo.getHours();
+      const startHour = twoHoursAgo.getHours();
       
       console.log('📅 Historical data request params:', { 
         plc: plcName,
@@ -125,7 +125,7 @@ export default function PLCDetailsPage() {
         startHour, 
         endHour: currentHour,
         actualTimes: {
-          start: oneHourAgo.toLocaleString('fa-IR', { timeZone: 'Asia/Tehran' }),
+          start: twoHoursAgo.toLocaleString('fa-IR', { timeZone: 'Asia/Tehran' }),
           end: now.toLocaleString('fa-IR', { timeZone: 'Asia/Tehran' })
         }
       });
@@ -441,7 +441,7 @@ export default function PLCDetailsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Activity className="w-5 h-5 text-blue-500" />
-                  نمودار یک ساعت گذشته
+                  نمودار دو ساعت گذشته
                   {historicalData.length > 0 && (
                     <Badge variant="outline" className="mr-2">
                       {historicalData.length.toLocaleString('fa-IR')} نقطه داده
@@ -460,7 +460,7 @@ export default function PLCDetailsPage() {
                     {/* Chart Info */}
                     <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                       <div className="text-sm text-blue-700">
-                        📊 نمودار داده‌های {historicalData.length.toLocaleString('fa-IR')} نقطه از یک ساعت گذشته
+                        📊 نمودار داده‌های {historicalData.length.toLocaleString('fa-IR')} نقطه از دو ساعت گذشته
                       </div>
                       <div className="text-xs text-blue-600 mt-1">
                         🕒 از {historicalData[0]?.Timestamp ? new Date(historicalData[0].Timestamp).toLocaleString('fa-IR') : 'نامشخص'} 
@@ -477,7 +477,7 @@ export default function PLCDetailsPage() {
                   <div className="flex items-center justify-center h-96 text-gray-500">
                     <div className="text-center">
                       <AlertCircle className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-                      <div>داده‌ای برای یک ساعت گذشته یافت نشد</div>
+                      <div>داده‌ای برای دو ساعت گذشته یافت نشد</div>
                       <div className="text-sm text-gray-400 mt-1">
                         PLC: {plcName} | ممکن است سیستم در این بازه زمانی آفلاین بوده باشد
                       </div>
