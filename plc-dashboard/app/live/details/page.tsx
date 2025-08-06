@@ -423,8 +423,8 @@ export default function PLCDetailsPage() {
                         📊 نمودار داده‌های {historicalData.length.toLocaleString('fa-IR')} نقطه از دو ساعت گذشته
                       </div>
                       <div className="text-xs text-blue-600 mt-1">
-                        🕒 از {historicalData[0]?.Timestamp ? new Date(historicalData[0].Timestamp).toLocaleString('fa-IR') : 'نامشخص'} 
-                        تا {historicalData[historicalData.length - 1]?.Timestamp ? new Date(historicalData[historicalData.length - 1].Timestamp).toLocaleString('fa-IR') : 'نامشخص'}
+                        🕒 از {historicalData[0]?.Timestamp ? new Date(historicalData[0].Timestamp).toLocaleString('fa-IR', { timeZone: 'UTC' }) : 'نامشخص'} 
+                        تا {historicalData[historicalData.length - 1]?.Timestamp ? new Date(historicalData[historicalData.length - 1].Timestamp).toLocaleString('fa-IR', { timeZone: 'UTC' }) : 'نامشخص'}
                       </div>
                     </div>
                     <DataChart 

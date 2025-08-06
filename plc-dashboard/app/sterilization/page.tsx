@@ -11,6 +11,17 @@ interface PLC {
   availableDates: string[];
 }
 
+interface RegisterData {
+  register: string;
+  label: string;
+  description: string;
+  labelFa: string;
+  descriptionFa: string;
+  value: any;
+  unit: string;
+  isLight?: boolean;
+}
+
 interface SterilizationProcess {
   id: number;
   startTime: string;
@@ -35,6 +46,7 @@ export default function SterilizationPage() {
   const [error, setError] = useState<string>('');
   const [selectedProcessForChart, setSelectedProcessForChart] = useState<SterilizationProcess | null>(null);
   const [isChartModalOpen, setIsChartModalOpen] = useState<boolean>(false);
+  const [registers, setRegisters] = useState<RegisterData[]>([]);
 
   const loadPLCs = async () => {
     try {
@@ -49,6 +61,24 @@ export default function SterilizationPage() {
     } catch (error) {
       console.error('Error loading PLCs:', error);
       setError('خطا در برقراری ارتباط با سرور');
+    }
+  };
+
+  // Fetch current PLC data for registers
+  const fetchLatestData = async () => {
+    try {
+      const response = await fetch('/api/latest-data');
+      const result = await response.json();
+      
+      if (result.success && result.data && selectedPLC) {
+        const targetPlc = result.data.find((plc: any) => plc.plc.name === selectedPLC);
+        
+        if (targetPlc && targetPlc.data) {
+          setRegisters(targetPlc.data);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching latest data:', err);
     }
   };
 
@@ -82,10 +112,13 @@ export default function SterilizationPage() {
     loadPLCs();
   }, []);
 
-  // Load processes when PLC or date changes
+  // Load processes and registers when PLC or date changes
   useEffect(() => {
     if (selectedPLC && selectedDate) {
       loadProcesses();
+    }
+    if (selectedPLC) {
+      fetchLatestData();
     }
   }, [selectedPLC, selectedDate]);
 
@@ -120,12 +153,17 @@ export default function SterilizationPage() {
       const startHour = paddedStartTime.getHours();
       const endHour = Math.min(paddedEndTime.getHours() + 1, 23);
       
+      // Get available register names from fetchLatestData
+      const availableRegisters = registers.length > 0 
+        ? registers.map(r => r.register).join(',')
+        : 'Temputare_main,Temputare_1,Temputare_2,Temputare_3,Temputare_4';
+      
       const params = new URLSearchParams({
         plc: selectedPLC,
         date: selectedDate,
         startHour: startHour.toString(),
         endHour: endHour.toString(),
-        registers: 'Temputare_main,Temputare_1,Temputare_2,Temputare_3,Temputare_4'
+        registers: availableRegisters
       });
 
       const response = await fetch(`/api/data?${params.toString()}`);
@@ -274,12 +312,12 @@ export default function SterilizationPage() {
                           فرآیند #{process.id}
                         </h3>
                         <div className="flex items-center gap-2">
-                          <button
+                          {/* <button
                             onClick={() => openChartModal(process)}
                             className="px-4 py-2 bg-blue-500 text-white rounded-md text-sm font-medium hover:bg-blue-600 transition-colors"
                           >
                             📊 نمایش نمودار
-                          </button>
+                          </button> */}
                           <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                             process.success 
                               ? 'bg-green-100 text-green-800' 
@@ -397,15 +435,14 @@ export default function SterilizationPage() {
                   </div>
                   <DataChart 
                     data={processChartData[selectedProcessForChart.id]}
-                    registers={[
+                    registers={registers.length > 0 ? registers : [
                       { register: 'Temputare_main', label: 'Temputare_main', labelFa: 'دمای اصلی', description: 'Main Temperature', descriptionFa: 'دمای اصلی' },
                       { register: 'Temputare_1', label: 'Temputare_1', labelFa: 'دمای 1', description: 'Temperature 1', descriptionFa: 'دمای 1' },
                       { register: 'Temputare_2', label: 'Temputare_2', labelFa: 'دمای 2', description: 'Temperature 2', descriptionFa: 'دمای 2' },
                       { register: 'Temputare_3', label: 'Temputare_3', labelFa: 'دمای 3', description: 'Temperature 3', descriptionFa: 'دمای 3' },
                       { register: 'Temputare_4', label: 'Temputare_4', labelFa: 'دمای 4', description: 'Temperature 4', descriptionFa: 'دمای 4' }
                     ]}
-                    selectedRegisters={['دمای اصلی']}
-                  />
+                selectedRegisters={['فشار', 'دمای اصلی']}                  />
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-96 text-gray-500">
