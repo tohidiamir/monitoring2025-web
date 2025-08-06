@@ -60,12 +60,9 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
         if (isPressureOrTemperatureRegister(register.register, register.label, register.labelFa)) {
           const originalValue = item[register.label];
           if (originalValue !== null && originalValue !== undefined && !isNaN(Number(originalValue))) {
-            processedItem[register.label] = Number(applyPressureTemperatureMultiplier(
-              originalValue, 
-              register.register, 
-              register.label, 
-              register.labelFa
-            ));
+            // Keep the result as a number with proper precision
+            const multipliedValue = Number(originalValue) * 0.1;
+            processedItem[register.label] = multipliedValue;
           }
         }
       });
@@ -126,15 +123,41 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
               tick={{ fontSize: 12 }}
               interval="preserveStartEnd"
             />
-            <YAxis tick={{ fontSize: 12 }} />
+            <YAxis 
+              tick={{ fontSize: 12 }}
+              tickFormatter={(value) => {
+                const numValue = Number(value);
+                if (isNaN(numValue)) return value;
+                
+                // Check if any of the displayed registers are pressure/temperature
+                const hasPressureTemp = displayRegisters.some(r => 
+                  isPressureOrTemperatureRegister(r.register, r.label, r.labelFa)
+                );
+                
+                if (hasPressureTemp) {
+                  return numValue.toLocaleString('fa-IR', {
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 1
+                  });
+                }
+                
+                return Math.round(numValue).toLocaleString('fa-IR');
+              }}
+            />
             <Tooltip
               labelFormatter={(value, payload) => {
                 const item = payload?.[0]?.payload;
                 return item?.fullTime || value;
               }}
               formatter={(value: any, name: string) => {
+                // Extract register code from name (format: "Label (D500)")
+                const registerMatch = name.match(/\(([^)]+)\)$/);
+                const registerCode = registerMatch ? registerMatch[1] : '';
+                
                 // پیدا کردن رجیستر مربوطه برای نمایش نام فارسی
-                const register = registers.find(r => name.includes(r.label));
+                const register = registers.find(r => 
+                  name.includes(r.label) || r.register === registerCode
+                );
                 const displayName = register ? (register.labelFa || register.label) : name;
                 
                 // Format the value properly
@@ -176,6 +199,7 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
                 dot={{ r: 1 }}
                 activeDot={{ r: 4 }}
                 name={`${register.labelFa || register.label} (${register.register})`}
+                connectNulls={false}
               />
             ))}
           </LineChart>
