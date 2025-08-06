@@ -29,6 +29,45 @@ interface DataChartProps {
 }
 
 export default function DataChart({ data, registers, selectedRegisters }: DataChartProps) {
+  // Debug logs
+  console.log('🔍 DataChart received:', {
+    dataLength: data?.length,
+    registersCount: registers?.length,
+    selectedRegisters,
+    sampleDataItem: data?.[0],
+    sampleRegister: registers?.[0],
+    availableDataKeys: data?.[0] ? Object.keys(data[0]) : 'No data'
+  });
+
+  // Create mapping from register labels to actual data keys
+  const getDataKey = (register: Register) => {
+    const dataKeys = data?.[0] ? Object.keys(data[0]) : [];
+    
+    // First try to find exact match with register.label
+    if (dataKeys.includes(register.label)) {
+      return register.label;
+    }
+    
+    // If label is Persian, try to find English equivalent in data
+    const mapping: { [key: string]: string } = {
+      'فشار': 'Pressure',
+      'دمای اصلی': 'Temputare_main',
+      'حداقل فشار': 'Pressure_min',
+      'حداکثر فشار': 'Pressure_max',
+      // Add more mappings as needed
+    };
+    
+    if (mapping[register.label]) {
+      const englishKey = mapping[register.label];
+      if (dataKeys.includes(englishKey)) {
+        return englishKey;
+      }
+    }
+    
+    // Fallback to original label
+    return register.label;
+  };
+
   // Generate colors for each register
   const colors = [
     '#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#8dd1e1',
@@ -58,11 +97,12 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
       // Apply 0.1 multiplier to pressure and temperature values
       registers.forEach(register => {
         if (isPressureOrTemperatureRegister(register.register, register.label, register.labelFa)) {
-          const originalValue = item[register.label];
+          const dataKey = getDataKey(register);
+          const originalValue = item[dataKey];
           if (originalValue !== null && originalValue !== undefined && !isNaN(Number(originalValue))) {
             // Keep the result as a number with proper precision
             const multipliedValue = Number(originalValue) * 0.1;
-            processedItem[register.label] = multipliedValue;
+            processedItem[dataKey] = multipliedValue;
           }
         }
       });
@@ -71,10 +111,24 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
     });
   }, [data, registers]);
 
+  // Debug chartData
+  console.log('📊 Chart data processed:', {
+    originalDataLength: data?.length,
+    chartDataLength: chartData?.length,
+    sampleChartItem: chartData?.[0]
+  });
+
   // Get registers to display
   const displayRegisters = useMemo(() => {
     if (selectedRegisters.length > 0) {
-      return registers.filter(reg => selectedRegisters.includes(reg.label));
+      const filtered = registers.filter(reg => selectedRegisters.includes(reg.label));
+      console.log('🎯 Filtered registers:', {
+        selectedRegisters,
+        filteredCount: filtered.length,
+        filteredLabels: filtered.map(r => r.label),
+        allAvailableLabels: registers.map(r => r.label)
+      });
+      return filtered;
     }
     return registers;
   }, [registers, selectedRegisters]);
@@ -189,18 +243,23 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
               }}
             />
             <Legend />
-            {displayRegisters.map((register, index) => (
-              <Line
-                key={register.label}
-                type="monotone"
-                dataKey={register.label}
-                stroke={colors[index % colors.length]}
-                strokeWidth={2}
-                dot={{ r: 1 }}
-                activeDot={{ r: 4 }}
-                connectNulls={false}
-              />
-            ))}
+            {displayRegisters.map((register, index) => {
+              const dataKey = getDataKey(register);
+              console.log(`🗝️ Register "${register.label}" mapped to data key "${dataKey}"`);
+              
+              return (
+                <Line
+                  key={register.label}
+                  type="monotone"
+                  dataKey={dataKey}
+                  stroke={colors[index % colors.length]}
+                  strokeWidth={2}
+                  dot={{ r: 1 }}
+                  activeDot={{ r: 4 }}
+                  connectNulls={false}
+                />
+              );
+            })}
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -235,7 +294,8 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
               .filter(r => ['D525', 'D526', 'D527'].includes(r.register))
               .map((register) => {
                 // Get the latest value for this light
-                const latestValue = chartData[chartData.length - 1]?.[register.label];
+                const dataKey = getDataKey(register);
+                const latestValue = chartData[chartData.length - 1]?.[dataKey];
                 const isActive = latestValue === 'فعال';
                 
                 let lightConfig = { color: '', bgColor: '', name: '', icon: '●' };
@@ -286,8 +346,9 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
       {/* Data Summary */}
       <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {displayRegisters.filter(r => !['D525', 'D526', 'D527'].includes(r.register)).map((register) => {
+          const dataKey = getDataKey(register);
           const values = chartData
-            .map(item => Number(item[register.label]))
+            .map(item => Number(item[dataKey]))
             .filter(val => !isNaN(val));
           
           if (values.length === 0) return null;

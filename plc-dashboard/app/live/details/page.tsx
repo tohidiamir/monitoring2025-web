@@ -470,7 +470,7 @@ export default function PLCDetailsPage() {
                     <DataChart 
                       data={historicalData}
                       registers={registers}
-                      selectedRegisters={[]}
+                      selectedRegisters={['فشار', 'دمای اصلی']}
                     />
                   </div>
                 ) : (
