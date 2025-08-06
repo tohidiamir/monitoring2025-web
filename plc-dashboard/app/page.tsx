@@ -21,10 +21,16 @@ interface PLC {
 }
 
 export default function Home() {
+  // محاسبه ساعت جاری منهای یک ساعت
+  const getCurrentHourMinus1 = () => {
+    const currentHour = new Date().getHours();
+    return Math.max(0, currentHour - 1); // حداقل 0 باشد
+  };
+
   const [plcs, setPLCs] = useState<PLC[]>([]);
   const [selectedPLC, setSelectedPLC] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<string>('');
-  const [startHour, setStartHour] = useState<number>(0);
+  const [startHour, setStartHour] = useState<number>(getCurrentHourMinus1());
   const [endHour, setEndHour] = useState<number>(24);
   const [selectedRegisters, setSelectedRegisters] = useState<string[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
@@ -103,6 +109,14 @@ export default function Home() {
 
   const selectedPLCConfig = plcs.find(p => p.name === selectedPLC);
 
+  // Auto-select pressure and main temperature when PLC and date are selected
+  useEffect(() => {
+    if (selectedPLCConfig && selectedDate && selectedRegisters.length === 0) {
+      const defaultRegisters = ['Pressure', 'Temputare_main'];
+      setSelectedRegisters(defaultRegisters);
+    }
+  }, [selectedPLCConfig, selectedDate, selectedRegisters.length]);
+
   return (
     <div className="min-h-screen bg-gray-100">
       <Navigation />
@@ -139,7 +153,7 @@ export default function Home() {
                   onChange={(e) => {
                     setSelectedPLC(e.target.value);
                     setSelectedDate(''); // Reset date when PLC changes
-                    setSelectedRegisters([]);
+                    setSelectedRegisters([]); // Reset registers to allow auto-selection of defaults
                   }}
                   className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >

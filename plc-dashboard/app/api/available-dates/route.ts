@@ -5,21 +5,39 @@ import { getDbConnection } from '@/lib/database';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-// تابع تبدیل تاریخ میلادی به شمسی
+// تابع تبدیل تاریخ میلادی به شمسی با استفاده از کتابخانه Intl
 function convertToPersianDate(gregorianDate: Date): string {
-  let gYear = gregorianDate.getFullYear();
+  try {
+    // استفاده از API مرورگر برای تبدیل تاریخ
+    const formatter = new Intl.DateTimeFormat('fa-IR-u-nu-latn', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      calendar: 'persian'
+    });
+    
+    return formatter.format(gregorianDate);
+  } catch (error) {
+    // در صورت خطا، از الگوریتم دستی استفاده کنیم
+    return convertToPersianDateManual(gregorianDate);
+  }
+}
+
+// الگوریتم دستی تبدیل تاریخ (برای پشتیبانی از محیط‌هایی که Intl کامل ندارند)
+function convertToPersianDateManual(gregorianDate: Date): string {
+  const gYear = gregorianDate.getFullYear();
   const gMonth = gregorianDate.getMonth() + 1;
   const gDay = gregorianDate.getDate();
   
-  // الگوریتم تبدیل میلادی به شمسی
+  // الگوریتم کاظم زاده برای تبدیل میلادی به شمسی
   const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
   
-  let jy = (gYear <= 1600) ? 0 : 979;
-  gYear -= (gYear <= 1600) ? 621 : 1600;
+  let jy = gYear <= 1600 ? 0 : 979;
+  let gy = gYear - (gYear <= 1600 ? 621 : 1600);
   
-  let gy2 = (gMonth > 2) ? (gYear + 1) : gYear;
-  let days = (365 * gYear) + (Math.floor((gy2 + 3) / 4)) + (Math.floor((gy2 + 99) / 100)) - 
-             (Math.floor((gy2 + 399) / 400)) - 80 + gDay + g_d_m[gMonth - 1];
+  let gy2 = gMonth > 2 ? gy + 1 : gy;
+  let days = (365 * gy) + Math.floor((gy2 + 3) / 4) + Math.floor((gy2 + 99) / 100) - 
+             Math.floor((gy2 + 399) / 400) - 80 + gDay + g_d_m[gMonth - 1];
   
   jy += 33 * Math.floor(days / 12053);
   days %= 12053;
@@ -27,8 +45,10 @@ function convertToPersianDate(gregorianDate: Date): string {
   jy += 4 * Math.floor(days / 1461);
   days %= 1461;
   
-  jy += Math.floor((days - 1) / 365);
-  if (days > 365) days = (days - 1) % 365;
+  if (days >= 366) {
+    jy += Math.floor((days - 1) / 365);
+    days = (days - 1) % 365;
+  }
   
   let jm, jd;
   if (days < 186) {
@@ -69,17 +89,6 @@ export async function GET(request: Request) {
     const testResult = await pool.request().query(testQuery);
     console.log('✅ Connected to database:', testResult.recordset[0].CurrentDatabase);
     
-    // تست لیست جدول‌ها
-    const allTablesQuery = `SELECT name as TABLE_NAME FROM sys.tables`;
-    const allTablesResult = await pool.request().query(allTablesQuery);
-    console.log(`📊 Total tables in database: ${allTablesResult.recordset.length}`);
-    console.log('📋 First 5 tables:', allTablesResult.recordset.slice(0, 5).map(t => t.TABLE_NAME));
-    
-    // تست مستقیم با نام جدول
-    const directTestQuery = `SELECT COUNT(*) as count FROM sys.tables WHERE name LIKE 'PLC_Data%'`;
-    const directTestResult = await pool.request().query(directTestQuery);
-    console.log(`🔍 PLC tables found (direct): ${directTestResult.recordset[0].count}`);
-    
     // جستجوی جدول‌های موجود برای این PLC با استفاده از sys.tables
     const query = `
       SELECT 
@@ -91,9 +100,9 @@ export async function GET(request: Request) {
       ORDER BY name DESC
     `;
 
-
     const result = await pool.request().query(query);
-        console.log(result)
+    console.log(`🔍 Found ${result.recordset.length} tables for PLC_${plcId}`);
+    
     // تبدیل نام جدول‌ها به تاریخ‌های قابل خواندن
     const availableDates = result.recordset.map((row: any) => {
       const dateString = row.DateString; // مثال: 20250802
@@ -127,7 +136,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: false,
       message: 'Failed to get available dates',
-      error: error.message,
+      error: error instanceof Error ? error.message : 'Unknown error',
     }, { status: 500 });
   }
 }
