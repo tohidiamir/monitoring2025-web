@@ -59,22 +59,11 @@ export default function PLCDetailsPage() {
   // Fetch current PLC data
   const fetchLatestData = async () => {
     try {
-      console.log('Fetching latest data for PLC ID:', plcId);
       const response = await fetch('/api/latest-data');
       const result = await response.json();
       
-      console.log('API Response:', result);
-      console.log('Looking for PLC with ID:', plcId);
-      
       if (result.success && result.data) {
-        console.log('Available PLCs:', result.data.map((p: any) => ({
-          id: p.plc.id,
-          name: p.plc.name,
-          displayName: p.plc.displayName
-        })));
-        
         const targetPlc = result.data.find((plc: any) => plc.plc.id.toString() === plcId);
-        console.log('Target PLC found:', targetPlc);
         
         if (targetPlc) {
           setPlcData(targetPlc);
@@ -82,11 +71,9 @@ export default function PLCDetailsPage() {
             setRegisters(targetPlc.data);
           }
         } else {
-          console.error('PLC not found with id:', plcId);
           setError(`اتوکلاو با شناسه ${plcId} یافت نشد`);
         }
       } else {
-        console.error('API response failed:', result);
         setError('خطا در دریافت اطلاعات از API');
       }
       setLastRefresh(new Date());
@@ -101,7 +88,6 @@ export default function PLCDetailsPage() {
   // Fetch historical data for chart (last 2 hours)
   const fetchHistoricalData = async () => {
     if (!plcName) {
-      console.warn('No plcName provided for historical data');
       return;
     }
     
@@ -119,17 +105,6 @@ export default function PLCDetailsPage() {
       const currentHour = now.getHours();
       const startHour = twoHoursAgo.getHours();
       
-      console.log('📅 Historical data request params:', { 
-        plc: plcName,
-        date, 
-        startHour, 
-        endHour: currentHour,
-        actualTimes: {
-          start: twoHoursAgo.toLocaleString('fa-IR', { timeZone: 'Asia/Tehran' }),
-          end: now.toLocaleString('fa-IR', { timeZone: 'Asia/Tehran' })
-        }
-      });
-      
       const params = new URLSearchParams({
         plc: plcName,
         date: date,
@@ -137,25 +112,16 @@ export default function PLCDetailsPage() {
         endHour: currentHour.toString()
       });
 
-      console.log('🌐 Historical data API URL:', `/api/data?${params.toString()}`);
-
       const response = await fetch(`/api/data?${params.toString()}`);
       const result = await response.json();
       
-      console.log('📊 Historical data API response:', result);
-      
       if (result.success && result.data) {
-        console.log(`✅ Successfully loaded ${result.data.length} historical records`);
-        console.log('📋 Sample data record:', result.data[0]);
-        console.log('📋 Available columns in historical data:', result.data.length > 0 ? Object.keys(result.data[0]) : 'No data');
-        console.log('📋 Available registers:', registers.map(r => ({ register: r.register, label: r.label, labelFa: r.labelFa })));
         setHistoricalData(result.data);
       } else {
-        console.warn('⚠️ No historical data found:', result.error || result.message);
         setHistoricalData([]);
       }
     } catch (err) {
-      console.error('❌ Error fetching historical data:', err);
+      console.error('Error fetching historical data:', err);
       setHistoricalData([]);
     } finally {
       setChartLoading(false);
@@ -163,7 +129,6 @@ export default function PLCDetailsPage() {
   };
 
   useEffect(() => {
-    console.log('PLC Details Page - plcId:', plcId, 'plcName:', plcName);
     if (plcId) {
       fetchLatestData();
       fetchHistoricalData();
@@ -183,7 +148,6 @@ export default function PLCDetailsPage() {
         clearInterval(chartInterval);
       };
     } else {
-      console.error('No plcId provided in URL');
       setLoading(false);
     }
   }, [plcId, plcName]);
@@ -346,10 +310,6 @@ export default function PLCDetailsPage() {
                   {plcData?.plc.displayName || `اتوکلاو ${plcId}`}
                 </h1>
                 <p className="text-gray-600 text-sm">جزئیات کامل اتوکلاو</p>
-                {/* Debug Info */}
-                <div className="text-xs text-gray-400 mt-1">
-                  Debug: ID={plcId}, Name={plcName}, Data={plcData ? 'موجود' : 'نامشخص'}
-                </div>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -358,7 +318,6 @@ export default function PLCDetailsPage() {
                 variant="outline" 
                 size="sm"
                 onClick={() => {
-                  console.log('Refreshing data...');
                   fetchLatestData();
                   fetchHistoricalData();
                 }}
@@ -486,7 +445,6 @@ export default function PLCDetailsPage() {
                         size="sm"
                         className="mt-4"
                         onClick={() => {
-                          console.log('Retry fetching historical data...');
                           fetchHistoricalData();
                         }}
                       >

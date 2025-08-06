@@ -359,14 +359,8 @@ export default function LiveDataPage() {
                           variant="default"
                           size="sm"
                           className="w-full text-xs bg-blue-600 hover:bg-blue-700 text-white"
-                          onClick={() => {
-                            console.log('Navigating to details with:', {
-                              id: plcData.plc.id,
-                              name: plcData.plc.name
-                            });
-                          }}
                         >
-                          📊 نمایش جزئیات + نمودار یک ساعت گذشته
+                          📊 نمایش جزئیات + نمودار دو ساعت گذشته
                         </Button>
                       </Link>
                     </div>

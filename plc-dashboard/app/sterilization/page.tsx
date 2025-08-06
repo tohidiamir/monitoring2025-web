@@ -23,8 +23,6 @@ interface SterilizationProcess {
 }
 
 export default function SterilizationPage() {
-  console.log('🚀 SterilizationPage: Component initializing...');
-  
   const [plcs, setPLCs] = useState<PLC[]>([]);
   const [selectedPLC, setSelectedPLC] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<string>('');
@@ -32,25 +30,18 @@ export default function SterilizationPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
-  console.log('🔄 SterilizationPage: State initialized successfully');
-
   const loadPLCs = async () => {
     try {
-      console.log('🔍 Sterilization: Loading PLCs...');
       const response = await fetch('/api/plcs');
       const result = await response.json();
       
-      console.log('📊 Sterilization: API response:', result);
-      
       if (result.success && result.plcs) {
-        console.log('✅ Sterilization: PLCs loaded successfully:', result.plcs);
         setPLCs(result.plcs);
       } else {
-        console.error('❌ Sterilization: Failed to load PLCs:', result);
         setError('خطا در بارگیری لیست اتوکلاوها');
       }
     } catch (error) {
-      console.error('❌ Sterilization: Error loading PLCs:', error);
+      console.error('Error loading PLCs:', error);
       setError('خطا در برقراری ارتباط با سرور');
     }
   };
@@ -62,13 +53,10 @@ export default function SterilizationPage() {
     setError('');
     
     try {
-      console.log('🔍 Sterilization: Loading processes for', selectedPLC, selectedDate);
       const response = await fetch(
         `/api/sterilization-processes?plc=${selectedPLC}&date=${selectedDate}`
       );
       const result = await response.json();
-      
-      console.log('📊 Sterilization: Processes response:', result);
       
       if (result.success) {
         setProcesses(result.processes || []);
@@ -76,7 +64,7 @@ export default function SterilizationPage() {
         setError(result.error || 'خطا در تشخیص فرآیند های استریل');
       }
     } catch (error) {
-      console.error('❌ Sterilization: Error loading processes:', error);
+      console.error('Error loading processes:', error);
       setError('خطا در برقراری ارتباط با سرور');
     } finally {
       setLoading(false);
@@ -85,19 +73,12 @@ export default function SterilizationPage() {
 
   // Load PLCs on mount
   useEffect(() => {
-    console.log('🚀 Sterilization: Component mounted, loading PLCs...');
     loadPLCs();
   }, []);
-
-  // Debug log when plcs state changes
-  useEffect(() => {
-    console.log('🔄 Sterilization: PLCs state changed:', plcs);
-  }, [plcs]);
 
   // Load processes when PLC or date changes
   useEffect(() => {
     if (selectedPLC && selectedDate) {
-      console.log('🔄 Sterilization: Loading processes for', selectedPLC, selectedDate);
       loadProcesses();
     }
   }, [selectedPLC, selectedDate]);
@@ -117,14 +98,6 @@ export default function SterilizationPage() {
   };
 
   const selectedPLCConfig = plcs.find(p => p.name === selectedPLC);
-
-  console.log('🔍 Sterilization: Current state:', {
-    plcsLength: plcs.length,
-    selectedPLC,
-    selectedDate,
-    selectedPLCConfig,
-    processesLength: processes.length
-  });
 
   return (
     <div className="min-h-screen bg-gray-100">

@@ -29,16 +29,6 @@ interface DataChartProps {
 }
 
 export default function DataChart({ data, registers, selectedRegisters }: DataChartProps) {
-  // Debug logs
-  console.log('🔍 DataChart received:', {
-    dataLength: data?.length,
-    registersCount: registers?.length,
-    selectedRegisters,
-    sampleDataItem: data?.[0],
-    sampleRegister: registers?.[0],
-    availableDataKeys: data?.[0] ? Object.keys(data[0]) : 'No data'
-  });
-
   // Create mapping from register labels to actual data keys
   const getDataKey = (register: Register) => {
     const dataKeys = data?.[0] ? Object.keys(data[0]) : [];
@@ -111,23 +101,10 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
     });
   }, [data, registers]);
 
-  // Debug chartData
-  console.log('📊 Chart data processed:', {
-    originalDataLength: data?.length,
-    chartDataLength: chartData?.length,
-    sampleChartItem: chartData?.[0]
-  });
-
   // Get registers to display
   const displayRegisters = useMemo(() => {
     if (selectedRegisters.length > 0) {
       const filtered = registers.filter(reg => selectedRegisters.includes(reg.label));
-      console.log('🎯 Filtered registers:', {
-        selectedRegisters,
-        filteredCount: filtered.length,
-        filteredLabels: filtered.map(r => r.label),
-        allAvailableLabels: registers.map(r => r.label)
-      });
       return filtered;
     }
     return registers;
@@ -243,7 +220,6 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
             <Legend />
             {displayRegisters.map((register, index) => {
               const dataKey = getDataKey(register);
-              console.log(`🗝️ Register "${register.label}" mapped to data key "${dataKey}"`);
               
               return (
                 <Line
