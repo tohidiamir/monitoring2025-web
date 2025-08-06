@@ -70,6 +70,31 @@ export function applyPressureTemperatureMultiplier(
 }
 
 /**
+ * Check if a register is a main temperature or pressure register that should be shown in charts
+ * @param register - The register identifier (e.g., 'D500')
+ * @param label - The English label for the register
+ * @param labelFa - The Persian label for the register
+ * @returns true if the register should be shown in charts
+ */
+export function isMainTemperaturePressureRegister(
+  register: string, 
+  label?: string, 
+  labelFa?: string
+): boolean {
+  // Main temperature and pressure registers only
+  const mainRegisters = [
+    'D500', // فشار اصلی (Main Pressure)
+    'D501', // دما اصلی (Main Temperature) 
+    'D502', // دما 1 (Temperature 1)
+    'D503', // دما 2 (Temperature 2)
+    'D504', // دما 3 (Temperature 3)
+    'D505', // دما 4 (Temperature 4)
+  ];
+  
+  return mainRegisters.includes(register);
+}
+
+/**
  * Format a value for display, applying appropriate decimal places
  * @param value - The value to format
  * @param register - The register identifier

@@ -198,7 +198,6 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
                 strokeWidth={2}
                 dot={{ r: 1 }}
                 activeDot={{ r: 4 }}
-                name={`${register.labelFa || register.label} (${register.register})`}
                 connectNulls={false}
               />
             ))}

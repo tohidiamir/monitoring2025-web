@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import Navigation from '@/components/Navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -348,6 +349,28 @@ export default function LiveDataPage() {
                       ))}
                     </div>
                     
+                    {/* دکمه نمایش جزئیات کامل */}
+                    <div className="pt-2">
+                      <Link 
+                        href={`/live/details?id=${plcData.plc.id}&name=${encodeURIComponent(plcData.plc.name)}`}
+                        className="block"
+                      >
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="w-full text-xs bg-blue-600 hover:bg-blue-700 text-white"
+                          onClick={() => {
+                            console.log('Navigating to details with:', {
+                              id: plcData.plc.id,
+                              name: plcData.plc.name
+                            });
+                          }}
+                        >
+                          📊 نمایش جزئیات + نمودار یک ساعت گذشته
+                        </Button>
+                      </Link>
+                    </div>
+
                     {/* دکمه نمایش اطلاعات تکمیلی */}
                     {secondaryRegisters.length > 0 && (
                       <div className="pt-2">
