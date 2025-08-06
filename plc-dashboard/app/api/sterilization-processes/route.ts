@@ -12,7 +12,8 @@ interface SterilizationProcess {
   duration: number; // in minutes
   maxTemperature: number;
   minTemperature: number;
-  sterilizationDuration: number; // time spent above 100°C
+  sterilizationDuration: number; // time spent above 120°C
+  highTempDuration: number; // time spent above 121°C
   success: boolean;
 }
 
@@ -29,7 +30,7 @@ function detectSterilizationProcesses(data: TemperatureReading[]): Sterilization
   } | null = null;
   
   const TEMP_THRESHOLD = 60; // درجه سیلسیوس - آستانه شروع/پایان فرآیند
-  const STERILIZATION_TEMP = 100; // درجه سیلسیوس برای استریل
+  const STERILIZATION_TEMP = 120; // درجه سیلسیوس برای شروع استریل
   const HIGH_STERILIZATION_TEMP = 121; // درجه برای استریل کامل
   let processId = 1;
 
@@ -55,12 +56,12 @@ function detectSterilizationProcesses(data: TemperatureReading[]): Sterilization
       currentProcess.minTemp = Math.min(currentProcess.minTemp, current.temperature);
       currentProcess.temperatureHistory.push(current);
       
-      // تشخیص شروع دوره استریل (بالای 100 درجه)
+      // تشخیص شروع دوره استریل (بالای 120 درجه)
       if (!currentProcess.aboveThresholdStart && current.temperature >= STERILIZATION_TEMP) {
         currentProcess.aboveThresholdStart = current.timestamp;
       }
       
-      // به‌روزرسانی پایان دوره استریل (تا زمانی که زیر 100 برود)
+      // به‌روزرسانی پایان دوره استریل (تا زمانی که زیر 120 برود)
       if (currentProcess.aboveThresholdStart && current.temperature >= STERILIZATION_TEMP) {
         currentProcess.aboveThresholdEnd = current.timestamp;
       }
@@ -93,8 +94,8 @@ function detectSterilizationProcesses(data: TemperatureReading[]): Sterilization
         }
       }
       
-      // موفقیت فرآیند: حداقل 15 دقیقه بالای 121 درجه یا حداقل 30 دقیقه بالای 100 درجه
-      const success = (currentProcess.maxTemp >= HIGH_STERILIZATION_TEMP && highTempDuration >= 15) ||
+      // موفقیت فرآیند: حداقل 20 دقیقه بالای 121 درجه یا حداقل 30 دقیقه بالای 120 درجه
+      const success = (currentProcess.maxTemp >= HIGH_STERILIZATION_TEMP && highTempDuration >= 20) ||
                       (currentProcess.maxTemp >= STERILIZATION_TEMP && sterilizationDuration >= 30);
       
       processes.push({
@@ -105,6 +106,7 @@ function detectSterilizationProcesses(data: TemperatureReading[]): Sterilization
         maxTemperature: currentProcess.maxTemp,
         minTemperature: currentProcess.minTemp,
         sterilizationDuration,
+        highTempDuration,
         success
       });
       
@@ -161,9 +163,12 @@ export async function GET(request: NextRequest) {
       const tempValue = row.Temputare_main || row.Temputare_1 || row.Temputare_2 || 
                        row.Temputare_3 || row.Temputare_4 || 0;
       
+      // تبدیل دما از فرمت PLC (مثلاً 290) به درجه سیلسیوس (29.0)
+      const actualTemp = (parseFloat(tempValue) || 0) / 10;
+      
       return {
-        timestamp: row.timestamp,
-        temperature: parseFloat(tempValue) || 0
+        timestamp: row.Timestamp || row.timestamp, // هر دو فرمت timestamp را پشتیبانی می‌کند
+        temperature: actualTemp
       };
     }).filter((item: TemperatureReading) => item.temperature > 0);
 

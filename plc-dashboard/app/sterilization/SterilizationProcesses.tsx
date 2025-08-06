@@ -18,6 +18,7 @@ interface SterilizationProcess {
   maxTemperature: number;
   minTemperature: number;
   sterilizationDuration: number;
+  highTempDuration: number;
   success: boolean;
 }
 
@@ -254,7 +255,11 @@ export default function SterilizationProcesses() {
                       <div className="mt-4 pt-4 border-t border-gray-200">
                         <p className="text-sm text-gray-600">
                           <span className="font-medium">توضیحات فرآیند:</span>
-                          {` دما از ${process.minTemperature.toFixed(1)}°C شروع شده، به حداکثر ${process.maxTemperature.toFixed(1)}°C رسیده و مدت ${formatDuration(process.sterilizationDuration)} در محدوده استریل (بالای 100°C) باقی مانده است.`}
+                          {` دما از ${process.minTemperature.toFixed(1)}°C شروع شده، به حداکثر ${process.maxTemperature.toFixed(1)}°C رسیده.`}
+                        </p>
+                        <p className="text-sm text-gray-600 mt-2">
+                          <span className="font-medium">مدت زمان استریل:</span>
+                          {` ${formatDuration(process.sterilizationDuration)} بالای 120°C و ${formatDuration(process.highTempDuration || 0)} بالای 121°C باقی مانده است.`}
                         </p>
                       </div>
                     </div>
