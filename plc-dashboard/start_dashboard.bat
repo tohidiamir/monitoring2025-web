@@ -12,5 +12,5 @@ if %errorlevel% neq 0 (
 )
 
 echo Starting dashboard server...
-start "" http://localhost:3000
+start "" http://localhost:3000/live
 call npm run start
