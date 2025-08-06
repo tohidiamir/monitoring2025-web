@@ -242,11 +242,11 @@ export default function PLCDetailsPage() {
       );
     }
     
-    // Format numeric values - API already applies 0.1 multiplier
+    // Format numeric values
     const numValue = Number(value);
     if (!isNaN(numValue)) {
       if (unit === 'بار' || unit === '°C') {
-        // API already has 0.1 multiplier applied, just format with 1 decimal place
+        // For pressure and temperature, format with 1 decimal place
         return `${numValue.toFixed(1)} ${unit}`;
       } else {
         // For time and other values, show as integer without decimals

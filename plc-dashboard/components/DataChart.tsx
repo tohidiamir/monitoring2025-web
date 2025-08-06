@@ -204,14 +204,12 @@ export default function DataChart({ data, registers, selectedRegisters }: DataCh
                 return item?.fullTime || value;
               }}
               formatter={(value: any, name: string) => {
-                // Extract register code from name (format: "Label (D500)")
-                const registerMatch = name.match(/\(([^)]+)\)$/);
-                const registerCode = registerMatch ? registerMatch[1] : '';
+                // Find register based on the dataKey (name parameter)
+                const register = registers.find(r => {
+                  const dataKey = getDataKey(r);
+                  return dataKey === name;
+                });
                 
-                // پیدا کردن رجیستر مربوطه برای نمایش نام فارسی
-                const register = registers.find(r => 
-                  name.includes(r.label) || r.register === registerCode
-                );
                 const displayName = register ? (register.labelFa || register.label) : name;
                 
                 // Format the value properly
