@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
+import DataChart from '@/components/DataChart';
 
 interface PLC {
   id: number;
@@ -28,8 +29,12 @@ export default function SterilizationPage() {
   const [selectedPLC, setSelectedPLC] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [processes, setProcesses] = useState<SterilizationProcess[]>([]);
+  const [processChartData, setProcessChartData] = useState<{[key: number]: any[]}>({});
+  const [chartLoading, setChartLoading] = useState<{[key: number]: boolean}>({});
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const [selectedProcessForChart, setSelectedProcessForChart] = useState<SterilizationProcess | null>(null);
+  const [isChartModalOpen, setIsChartModalOpen] = useState<boolean>(false);
 
   const loadPLCs = async () => {
     try {
@@ -88,7 +93,8 @@ export default function SterilizationPage() {
     return new Date(timestamp).toLocaleTimeString('fa-IR', {
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit'
+      second: '2-digit',
+      timeZone: 'UTC'
     });
   };
 
@@ -96,6 +102,62 @@ export default function SterilizationPage() {
     const hours = Math.floor(minutes / 60);
     const mins = Math.floor(minutes % 60);
     return hours > 0 ? `${hours} ساعت و ${mins} دقیقه` : `${mins} دقیقه`;
+  };
+
+  const loadProcessChart = async (process: SterilizationProcess) => {
+    if (!selectedPLC) return;
+
+    setChartLoading(prev => ({ ...prev, [process.id]: true }));
+    
+    try {
+      const startTime = new Date(process.startTime);
+      const endTime = new Date(process.endTime);
+      
+      // Add some padding - 30 minutes before and after
+      const paddedStartTime = new Date(startTime.getTime() - 30 * 60 * 1000);
+      const paddedEndTime = new Date(endTime.getTime() + 30 * 60 * 1000);
+      
+      const startHour = paddedStartTime.getHours();
+      const endHour = Math.min(paddedEndTime.getHours() + 1, 23);
+      
+      const params = new URLSearchParams({
+        plc: selectedPLC,
+        date: selectedDate,
+        startHour: startHour.toString(),
+        endHour: endHour.toString(),
+        registers: 'Temputare_main,Temputare_1,Temputare_2,Temputare_3,Temputare_4'
+      });
+
+      const response = await fetch(`/api/data?${params.toString()}`);
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        // Filter data to process timeframe with padding
+        const filteredData = result.data.filter((row: any) => {
+          const rowTime = new Date(row.Timestamp || row.timestamp);
+          return rowTime >= paddedStartTime && rowTime <= paddedEndTime;
+        });
+        
+        setProcessChartData(prev => ({ ...prev, [process.id]: filteredData }));
+      }
+    } catch (error) {
+      console.error('Error loading process chart:', error);
+    } finally {
+      setChartLoading(prev => ({ ...prev, [process.id]: false }));
+    }
+  };
+
+  const openChartModal = (process: SterilizationProcess) => {
+    setSelectedProcessForChart(process);
+    setIsChartModalOpen(true);
+    if (!processChartData[process.id]) {
+      loadProcessChart(process);
+    }
+  };
+
+  const closeChartModal = () => {
+    setIsChartModalOpen(false);
+    setSelectedProcessForChart(null);
   };
 
   const selectedPLCConfig = plcs.find(p => p.name === selectedPLC);
@@ -211,13 +273,21 @@ export default function SterilizationPage() {
                         <h3 className="text-lg font-medium">
                           فرآیند #{process.id}
                         </h3>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          process.success 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {process.success ? '✅ موفق' : '⚠️ ناقص'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => openChartModal(process)}
+                            className="px-4 py-2 bg-blue-500 text-white rounded-md text-sm font-medium hover:bg-blue-600 transition-colors"
+                          >
+                            📊 نمایش نمودار
+                          </button>
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                            process.success 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {process.success ? '✅ موفق' : '⚠️ ناقص'}
+                          </span>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
@@ -281,6 +351,80 @@ export default function SterilizationPage() {
           )}
         </div>
       </div>
+
+      {/* Chart Modal */}
+      {isChartModalOpen && selectedProcessForChart && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-hidden">
+            <div className="p-6 border-b">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold">
+                  نمودار فرآیند استریل #{selectedProcessForChart.id}
+                </h2>
+                <button
+                  onClick={closeChartModal}
+                  className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="mt-2 text-sm text-gray-600">
+                از {formatTime(selectedProcessForChart.startTime)} تا {formatTime(selectedProcessForChart.endTime)}
+                {' | '}
+                حداکثر دما: {selectedProcessForChart.maxTemperature.toFixed(1)}°C
+                {' | '}
+                مدت استریل: {formatDuration(selectedProcessForChart.sterilizationDuration)}
+              </div>
+            </div>
+            
+            <div className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 140px)' }}>
+              {chartLoading[selectedProcessForChart.id] ? (
+                <div className="flex items-center justify-center h-96">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                    <span>در حال بارگذاری نمودار...</span>
+                  </div>
+                </div>
+              ) : processChartData[selectedProcessForChart.id] && processChartData[selectedProcessForChart.id].length > 0 ? (
+                <div>
+                  <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="text-sm text-blue-700">
+                      📊 نمودار داده‌های {processChartData[selectedProcessForChart.id].length.toLocaleString('fa-IR')} نقطه
+                    </div>
+                    <div className="text-xs text-blue-600 mt-1">
+                      🕒 شامل 30 دقیقه قبل و بعد از فرآیند برای نمایش بهتر روند
+                    </div>
+                  </div>
+                  <DataChart 
+                    data={processChartData[selectedProcessForChart.id]}
+                    registers={[
+                      { register: 'Temputare_main', label: 'Temputare_main', labelFa: 'دمای اصلی', description: 'Main Temperature', descriptionFa: 'دمای اصلی' },
+                      { register: 'Temputare_1', label: 'Temputare_1', labelFa: 'دمای 1', description: 'Temperature 1', descriptionFa: 'دمای 1' },
+                      { register: 'Temputare_2', label: 'Temputare_2', labelFa: 'دمای 2', description: 'Temperature 2', descriptionFa: 'دمای 2' },
+                      { register: 'Temputare_3', label: 'Temputare_3', labelFa: 'دمای 3', description: 'Temperature 3', descriptionFa: 'دمای 3' },
+                      { register: 'Temputare_4', label: 'Temputare_4', labelFa: 'دمای 4', description: 'Temperature 4', descriptionFa: 'دمای 4' }
+                    ]}
+                    selectedRegisters={['دمای اصلی']}
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-96 text-gray-500">
+                  <div className="text-center">
+                    <div className="text-4xl mb-2">📊</div>
+                    <div>داده‌ای برای این فرآیند یافت نشد</div>
+                    <button 
+                      onClick={() => loadProcessChart(selectedProcessForChart)}
+                      className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >
+                      تلاش مجدد
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
