@@ -128,6 +128,13 @@ export async function GET(request: NextRequest) {
             if (register.register === 'D525' || register.register === 'D526' || register.register === 'D527') {
               // For lights: convert 0/1 to active/inactive status
               displayValue = (value === 1 || value === '1') ? 'فعال' : 'غیرفعال';
+            } else if (register.register === 'D522') {
+              // Special handling for D522 (Time_Second_Run): divide by 10 and show as seconds
+              if (value !== null && value !== undefined && !isNaN(Number(value))) {
+                displayValue = Math.round(Number(value) / 10); // Divide by 10, no decimals
+              } else {
+                displayValue = 'N/A';
+              }
             } else if (value !== null && value !== undefined) {
               // Apply 0.1 multiplier for pressure and temperature values
               const processedValue = applyPressureTemperatureMultiplier(
@@ -220,7 +227,8 @@ function getUnitForRegister(register: string): string {
   // Check Persian labels for unit determination
   if (label.includes('فشار')) return 'بار';
   if (label.includes('دما')) return '°C';
-  if (label.includes('زمان') || label.includes('دقیقه') || label.includes('ثانیه')) return 'دقیقه';
+  if (label.includes('زمان اصلی') || label.includes('زمان اجرا')) return 'دقیقه';
+  if (label.includes('ثانیه')) return 'ثانیه'; // D522 shows as seconds
   if (label.includes('سبز') || label.includes('قرمز') || label.includes('زرد')) return '';
   
   return '';
