@@ -5,6 +5,7 @@ import Navigation from '@/components/Navigation';
 import PLCSelector from '@/components/PLCSelector';
 import DateSelector from '@/components/DateSelector';
 import DataChart from '@/components/DataChart';
+import { exportToExcel } from '@/lib/excelUtils';
 
 interface PLC {
   id: number;
@@ -267,13 +268,36 @@ export default function Home() {
 
               {/* Load Data Button */}
               {selectedPLC && selectedDate && (
-                <button
-                  onClick={loadData}
-                  disabled={loading}
-                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'در حال بارگذاری...' : 'بارگذاری داده‌ها'}
-                </button>
+                <div className="space-y-2">
+                  <button
+                    onClick={loadData}
+                    disabled={loading}
+                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? 'در حال بارگذاری...' : 'بارگذاری داده‌ها'}
+                  </button>
+                  
+                  {/* Excel Export Button */}
+                  {chartData.length > 0 && selectedRegisters.length > 0 && (
+                    <button
+                      onClick={() => {
+                        const plcDisplayName = selectedPLCConfig?.displayName || selectedPLC;
+                        const dateRange = `${selectedDate}_${startHour.toString().padStart(2, '0')}-${endHour.toString().padStart(2, '0')}h`;
+                        exportToExcel(
+                          chartData, 
+                          selectedPLCConfig?.database_registers || [], 
+                          selectedRegisters,
+                          plcDisplayName,
+                          dateRange
+                        );
+                      }}
+                      className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 flex items-center justify-center gap-2"
+                    >
+                      📊 خروجی Excel
+                      <span className="text-xs">({chartData.length} رکورد)</span>
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -281,9 +305,34 @@ export default function Home() {
           {/* Chart Panel */}
           <div className="lg:col-span-3">
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold mb-4">
-                📊 نمودار داده‌های PLC
-              </h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold">
+                  📊 نمودار داده‌های PLC
+                </h2>
+                
+                {/* Excel Export Button in Chart Header */}
+                {chartData.length > 0 && selectedRegisters.length > 0 && (
+                  <button
+                    onClick={() => {
+                      const plcDisplayName = selectedPLCConfig?.displayName || selectedPLC;
+                      const dateRange = `${selectedDate}_${startHour.toString().padStart(2, '0')}-${endHour.toString().padStart(2, '0')}h`;
+                      exportToExcel(
+                        chartData, 
+                        selectedPLCConfig?.database_registers || [], 
+                        selectedRegisters,
+                        plcDisplayName,
+                        dateRange
+                      );
+                    }}
+                    className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center gap-2 text-sm"
+                  >
+                    📊 خروجی Excel
+                    <span className="text-xs bg-green-500 px-2 py-1 rounded">
+                      {chartData.length}
+                    </span>
+                  </button>
+                )}
+              </div>
               
               {loading ? (
                 <div className="flex items-center justify-center h-96">
