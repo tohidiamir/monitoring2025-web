@@ -108,7 +108,21 @@ export const exportToExcel = (
         
         // فرمت کردن اعداد
         if (typeof value === 'number') {
-          filteredItem[faLabel] = Number(value.toFixed(3));
+          // بررسی اینکه آیا این رجیستر مربوط به فشار یا دما است
+          const isPressureOrTemperature = 
+            registerLabel.toLowerCase().includes('pressure') || 
+            registerLabel.toLowerCase().includes('فشار') ||
+            registerLabel.toLowerCase().includes('temp') ||
+            registerLabel.toLowerCase().includes('دما') ||
+            registerLabel.toLowerCase().includes('حرارت');
+          
+          if (isPressureOrTemperature) {
+            // برای فشار و دما: تقسیم بر 10 و یک رقم اعشار
+            filteredItem[faLabel] = Number((value / 10).toFixed(1));
+          } else {
+            // برای سایر رجیسترها: سه رقم اعشار
+            filteredItem[faLabel] = Number(value);
+          }
         } else {
           filteredItem[faLabel] = value;
         }
