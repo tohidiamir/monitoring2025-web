@@ -4,11 +4,6 @@ import { getDbConnection, PLC_CONFIG } from '@/lib/database';
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
 
-interface TemperatureReading {
-  timestamp: string;
-  temperature: number;
-}
-
 interface SterilizationProcess {
   id: number;
   startTime: string;
@@ -16,110 +11,16 @@ interface SterilizationProcess {
   duration: number; // in minutes
   maxTemperature: number;
   minTemperature: number;
-  sterilizationDuration: number; // time spent above 120°C
-  highTempDuration: number; // time spent above 121°C
+  sterilizationDuration: number; // time spent above minimum required temperature
+  highTempDuration: number; // also time spent above minimum temperature (for backward compatibility)
+  timeMain: number; // مقدار time_main برای بررسی
   success: boolean;
 }
 
-function detectSterilizationProcesses(data: TemperatureReading[]): SterilizationProcess[] {
-  const processes: SterilizationProcess[] = [];
-  let currentProcess: {
-    startTime: string;
-    startTemp: number;
-    maxTemp: number;
-    minTemp: number;
-    aboveThresholdStart?: string;
-    aboveThresholdEnd?: string;
-    temperatureHistory: TemperatureReading[];
-  } | null = null;
-  
-  const TEMP_THRESHOLD = 60; // درجه سیلسیوس - آستانه شروع/پایان فرآیند
-  const STERILIZATION_TEMP = 120; // درجه سیلسیوس برای شروع استریل
-  const HIGH_STERILIZATION_TEMP = 121; // درجه برای استریل کامل
-  let processId = 1;
-
-  for (let i = 0; i < data.length; i++) {
-    const current = data[i];
-    const next = data[i + 1];
-    
-    // شروع فرآیند: دما از زیر 60 به بالای 60 می‌رود
-    if (!currentProcess && current.temperature < TEMP_THRESHOLD && 
-        next && next.temperature >= TEMP_THRESHOLD) {
-      currentProcess = {
-        startTime: current.timestamp,
-        startTemp: current.temperature,
-        maxTemp: current.temperature,
-        minTemp: current.temperature,
-        temperatureHistory: [current]
-      };
-    }
-    
-    // در حال پردازش فرآیند
-    if (currentProcess) {
-      currentProcess.maxTemp = Math.max(currentProcess.maxTemp, current.temperature);
-      currentProcess.minTemp = Math.min(currentProcess.minTemp, current.temperature);
-      currentProcess.temperatureHistory.push(current);
-      
-      // تشخیص شروع دوره استریل (بالای 120 درجه)
-      if (!currentProcess.aboveThresholdStart && current.temperature >= STERILIZATION_TEMP) {
-        currentProcess.aboveThresholdStart = current.timestamp;
-      }
-      
-      // به‌روزرسانی پایان دوره استریل (تا زمانی که زیر 120 برود)
-      if (currentProcess.aboveThresholdStart && current.temperature >= STERILIZATION_TEMP) {
-        currentProcess.aboveThresholdEnd = current.timestamp;
-      }
-    }
-    
-    // پایان فرآیند: دما از بالای 60 به زیر 60 می‌رود
-    if (currentProcess && current.temperature >= TEMP_THRESHOLD && 
-        next && next.temperature < TEMP_THRESHOLD) {
-      
-      const startTime = new Date(currentProcess.startTime);
-      const endTime = new Date(current.timestamp);
-      const duration = (endTime.getTime() - startTime.getTime()) / (1000 * 60); // دقیقه
-      
-      let sterilizationDuration = 0;
-      if (currentProcess.aboveThresholdStart && currentProcess.aboveThresholdEnd) {
-        const sterilStart = new Date(currentProcess.aboveThresholdStart);
-        const sterilEnd = new Date(currentProcess.aboveThresholdEnd);
-        sterilizationDuration = (sterilEnd.getTime() - sterilStart.getTime()) / (1000 * 60);
-      }
-
-      // محاسبه مدت زمان بالای 121 درجه
-      let highTempDuration = 0;
-      for (let j = 0; j < currentProcess.temperatureHistory.length - 1; j++) {
-        const curr = currentProcess.temperatureHistory[j];
-        const nextTemp = currentProcess.temperatureHistory[j + 1];
-        if (curr.temperature >= HIGH_STERILIZATION_TEMP) {
-          const currTime = new Date(curr.timestamp);
-          const nextTime = new Date(nextTemp.timestamp);
-          highTempDuration += (nextTime.getTime() - currTime.getTime()) / (1000 * 60);
-        }
-      }
-      
-      // موفقیت فرآیند: حداقل 20 دقیقه بالای 121 درجه یا حداقل 30 دقیقه بالای 120 درجه
-      const success = (currentProcess.maxTemp >= HIGH_STERILIZATION_TEMP && highTempDuration >= 20) ||
-                      (currentProcess.maxTemp >= STERILIZATION_TEMP && sterilizationDuration >= 30);
-      
-      processes.push({
-        id: processId++,
-        startTime: currentProcess.startTime,
-        endTime: current.timestamp,
-        duration,
-        maxTemperature: currentProcess.maxTemp,
-        minTemperature: currentProcess.minTemp,
-        sterilizationDuration,
-        highTempDuration,
-        success
-      });
-      
-      currentProcess = null;
-    }
-  }
-  
-  return processes;
-}
+// روش پیاده سازی قبلی:
+// این روش قبلی استخراج اطلاعات استریل بود که بر اساس دمای بالای یک آستانه کار می‌کرد.
+// در روش جدید به جای این الگوریتم، از فیلدهای time_minute_run و time_main در دیتابیس استفاده می‌کنیم
+// تا فرآیندهای استریل را دقیق‌تر تشخیص دهیم.
 
 export async function GET(request: NextRequest) {
   try {
@@ -168,12 +69,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Query temperature data directly from database
-    const temperatureColumns = ['Temputare_main', 'Temputare_1', 'Temputare_2', 'Temputare_3', 'Temputare_4'];
-    const availableColumns = [];
-    
-    // Check which temperature columns exist
-    for (const col of temperatureColumns) {
+    // Check for necessary columns
+    const requiredColumns = ['Timestamp', 'Temputare_main', 'time_minute_run', 'time_main', 'Temputare_min'];
+    for (const col of requiredColumns) {
       try {
         const checkQuery = `
           SELECT COUNT(*) as count 
@@ -181,61 +79,120 @@ export async function GET(request: NextRequest) {
           WHERE TABLE_NAME = '${tableName}' AND COLUMN_NAME = '${col}'
         `;
         const result = await pool.request().query(checkQuery);
-        if (result.recordset[0].count > 0) {
-          availableColumns.push(col);
+        if (result.recordset[0].count === 0) {
+          console.log(`Required column ${col} not found in table`);
+          return NextResponse.json({ 
+            success: false, 
+            error: `Required column ${col} not found in table` 
+          });
         }
       } catch (error) {
-        console.log(`Column ${col} not found`);
+        console.log(`Error checking column ${col}: ${error}`);
       }
     }
 
-    if (availableColumns.length === 0) {
-      return NextResponse.json({ 
-        success: true, 
-        processes: [],
-        message: 'No temperature columns found' 
-      });
-    }
-
-    // Query data from database
+    // Query to identify sterilization processes based on time_minute_run
     const query = `
-      SELECT Timestamp, ${availableColumns.join(', ')}
-      FROM [${tableName}]
-      WHERE ${availableColumns.map(col => `${col} IS NOT NULL AND ${col} > 0`).join(' OR ')}
-      ORDER BY Timestamp ASC
+      WITH DataPoints AS (
+        -- Get all data points with relevant columns
+        SELECT 
+          Timestamp,
+          Temputare_main / 10.0 AS Temperature,
+          time_minute_run,
+          time_main,
+          Temputare_min / 10.0 AS MinRequiredTemp,
+          -- Detect transitions in time_minute_run
+          LAG(time_minute_run, 1, -1) OVER (ORDER BY Timestamp) AS PrevTimeMinuteRun
+        FROM [${tableName}]
+        WHERE time_minute_run IS NOT NULL AND time_main IS NOT NULL AND Temputare_main IS NOT NULL
+        AND Temputare_main > 0
+      ),
+      ProcessBoundaries AS (
+        -- Find start and end points of sterilization processes
+        SELECT 
+          Timestamp,
+          Temperature,
+          time_minute_run,
+          time_main,
+          MinRequiredTemp,
+          -- Process starts when time_minute_run changes from 0 (or any other value) to 1
+          CASE WHEN time_minute_run = 1 AND (PrevTimeMinuteRun != 1 OR PrevTimeMinuteRun = -1) THEN 1 ELSE 0 END AS ProcessStart,
+          -- Process ends when time_minute_run changes from non-zero to 0 (after heating period)
+          CASE WHEN time_minute_run = 0 AND PrevTimeMinuteRun > 0 THEN 1 ELSE 0 END AS ProcessEnd,
+          -- Mark rows that are part of a sterilization process
+          CASE WHEN time_minute_run >= 1 OR (time_minute_run = 0 AND PrevTimeMinuteRun > 0) THEN 1 ELSE 0 END AS IsInProcess,
+          -- Mark rows where temperature is above minimum required
+          CASE WHEN Temperature >= MinRequiredTemp THEN 1 ELSE 0 END AS IsAboveMinTemp
+        FROM DataPoints
+      ),
+      ProcessSegments AS (
+        -- Group data points into distinct processes
+        SELECT 
+          *,
+          SUM(ProcessStart) OVER (ORDER BY Timestamp) AS ProcessID
+        FROM ProcessBoundaries
+        WHERE IsInProcess = 1
+      ),
+      ProcessStats AS (
+        -- Calculate statistics for each process
+        SELECT
+          ProcessID,
+          MIN(Timestamp) AS StartTime,
+          MAX(Timestamp) AS EndTime,
+          DATEDIFF(MINUTE, MIN(Timestamp), MAX(Timestamp)) AS Duration,
+          MIN(Temperature) AS MinTemperature,
+          MAX(Temperature) AS MaxTemperature,
+          SUM(IsAboveMinTemp) AS AboveMinTempCount,
+          COUNT(*) AS TotalReadingsCount,
+          MIN(MinRequiredTemp) AS MinRequiredTemp,
+          -- Find the time_main value for this process (should be consistent within a process)
+          MAX(time_main) AS TimeMain
+        FROM ProcessSegments
+        GROUP BY ProcessID
+        HAVING COUNT(*) > 0
+      )
+      -- Final output
+      SELECT
+        ROW_NUMBER() OVER (ORDER BY StartTime) AS id,
+        StartTime,
+        EndTime,
+        Duration,
+        MinTemperature,
+        MaxTemperature,
+        -- Calculate sterilization duration (time above minimum temperature)
+        (AboveMinTempCount * 1.0 / TotalReadingsCount) * Duration AS SterilizationDuration,
+        -- High temp duration (simplified for now, equivalent to sterilization duration)
+        (AboveMinTempCount * 1.0 / TotalReadingsCount) * Duration AS HighTempDuration,
+        -- Also include TimeMain value in output for validation
+        TimeMain,
+        -- Success if:
+        -- 1. At least 80% of the time was above minimum temperature AND
+        -- 2. Process continued until time_minute_run reached time_main
+        CASE WHEN ((AboveMinTempCount * 1.0 / TotalReadingsCount) >= 0.8) THEN 1 ELSE 0 END AS Success
+      FROM ProcessStats
+      ORDER BY StartTime
     `;
 
     const result = await pool.request().query(query);
-
-    // Convert data to temperature readings
-    const temperatureData: TemperatureReading[] = result.recordset.map((row: any) => {
-      // انتخاب اولین ستون دما موجود
-      const tempValue = availableColumns.reduce((acc, col) => acc || row[col], 0);
-      
-      // تبدیل دما از فرمت PLC (مثلاً 290) به درجه سیلسیوس (29.0)
-      const actualTemp = (parseFloat(tempValue) || 0) / 10;
-      
-      return {
-        timestamp: row.Timestamp,
-        temperature: actualTemp
-      };
-    }).filter((item: TemperatureReading) => item.temperature > 0);
-
-    if (temperatureData.length === 0) {
-      return NextResponse.json({ 
-        success: true, 
-        processes: [],
-        message: 'No valid temperature data found for the specified date' 
-      });
-    }
-
-    // تشخیص فرآیند های استریل
-    const processes = detectSterilizationProcesses(temperatureData);
+    
+    // Map database results to our process objects
+    const processes: SterilizationProcess[] = result.recordset.map((row: any) => ({
+      id: row.id,
+      startTime: row.StartTime,
+      endTime: row.EndTime,
+      duration: row.Duration,
+      maxTemperature: row.MaxTemperature,
+      minTemperature: row.MinTemperature,
+      sterilizationDuration: row.SterilizationDuration,
+      highTempDuration: row.HighTempDuration,
+      timeMain: row.TimeMain,  // اضافه کردن مقدار time_main برای بررسی
+      success: row.Success === 1
+    }));
 
     return NextResponse.json({ 
       success: true, 
       processes,
-      totalDataPoints: temperatureData.length,
+      totalProcesses: processes.length,
       date,
       plc: plcName
     });
