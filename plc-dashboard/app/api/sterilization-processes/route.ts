@@ -14,6 +14,9 @@ interface SterilizationProcess {
   sterilizationDuration: number; // time spent above minimum required temperature
   highTempDuration: number; // also time spent above minimum temperature (for backward compatibility)
   timeMain: number; // مقدار time_main برای بررسی
+  maxTimeRun: number; // حداکثر مقدار time_minute_run
+  percentTargetReached: number; // درصد رسیدن به time_main
+  percentAboveMinTemp: number; // درصد زمان بالای دمای حداقل
   success: boolean;
 }
 
@@ -59,6 +62,7 @@ export async function GET(request: NextRequest) {
       WHERE TABLE_NAME = '${tableName}'
     `;
 
+  
     const tableExistsResult = await pool.request().query(tableExistsQuery);
     
     if (tableExistsResult.recordset[0].count === 0) {
@@ -91,50 +95,60 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Query to identify sterilization processes based on time_minute_run
+    // Query to identify sterilization processes based on time_minute_run transitions
     const query = `
-      WITH DataPoints AS (
-        -- Get all data points with relevant columns
-        SELECT 
+      -- 1. Get all data points and detect transitions in time_minute_run
+      WITH TimeRunData AS (
+        SELECT
           Timestamp,
           Temputare_main / 10.0 AS Temperature,
           time_minute_run,
           time_main,
           Temputare_min / 10.0 AS MinRequiredTemp,
-          -- Detect transitions in time_minute_run
-          LAG(time_minute_run, 1, -1) OVER (ORDER BY Timestamp) AS PrevTimeMinuteRun
+          -- Get previous values to detect transitions
+          LAG(time_minute_run, 1, -1) OVER (ORDER BY Timestamp) AS PrevTimeRun,
+          -- Mark start of process: when time_minute_run changes from 0 or NULL to a value > 0
+          CASE WHEN time_minute_run > 0 AND (
+                LAG(time_minute_run, 1, 0) OVER (ORDER BY Timestamp) = 0 OR 
+                LAG(time_minute_run, 1, -1) OVER (ORDER BY Timestamp) = -1
+              ) 
+          THEN 1 ELSE 0 END AS ProcessStart,
+          -- Mark end of process: when time_minute_run changes from a value > 0 to 0
+          CASE WHEN time_minute_run = 0 AND LAG(time_minute_run, 1, 0) OVER (ORDER BY Timestamp) > 0 
+          THEN 1 ELSE 0 END AS ProcessEnd,
+          -- Mark if this row is part of a sterilization process
+          CASE WHEN time_minute_run > 0 THEN 1 ELSE 0 END AS IsInProcess,
+          -- Mark when temperature is above minimum required
+          CASE WHEN Temputare_main / 10.0 >= Temputare_min / 10.0 THEN 1 ELSE 0 END AS IsAboveMinTemp
         FROM [${tableName}]
-        WHERE time_minute_run IS NOT NULL AND time_main IS NOT NULL AND Temputare_main IS NOT NULL
-        AND Temputare_main > 0
+        WHERE Temputare_main > 0 AND time_minute_run IS NOT NULL
       ),
-      ProcessBoundaries AS (
-        -- Find start and end points of sterilization processes
-        SELECT 
+      -- 2. Assign process IDs to each sterilization process
+      ProcessGroups AS (
+        SELECT
+          *,
+          -- Each time ProcessStart is 1, increment the process ID
+          SUM(ProcessStart) OVER (ORDER BY Timestamp) AS ProcessID
+        FROM TimeRunData
+        WHERE IsInProcess = 1  -- Only include rows that are part of a process
+      ),
+      -- 3. Get all data for each process
+      ProcessData AS (
+        SELECT
+          ProcessID,
           Timestamp,
           Temperature,
           time_minute_run,
           time_main,
           MinRequiredTemp,
-          -- Process starts when time_minute_run changes from 0 (or any other value) to 1
-          CASE WHEN time_minute_run = 1 AND (PrevTimeMinuteRun != 1 OR PrevTimeMinuteRun = -1) THEN 1 ELSE 0 END AS ProcessStart,
-          -- Process ends when time_minute_run changes from non-zero to 0 (after heating period)
-          CASE WHEN time_minute_run = 0 AND PrevTimeMinuteRun > 0 THEN 1 ELSE 0 END AS ProcessEnd,
-          -- Mark rows that are part of a sterilization process
-          CASE WHEN time_minute_run >= 1 OR (time_minute_run = 0 AND PrevTimeMinuteRun > 0) THEN 1 ELSE 0 END AS IsInProcess,
-          -- Mark rows where temperature is above minimum required
-          CASE WHEN Temperature >= MinRequiredTemp THEN 1 ELSE 0 END AS IsAboveMinTemp
-        FROM DataPoints
+          IsAboveMinTemp,
+          -- Check if time_minute_run reached time_main
+          CASE WHEN time_minute_run >= time_main THEN 1 ELSE 0 END AS ReachedTarget
+        FROM ProcessGroups
+        WHERE ProcessID > 0  -- Only include rows with valid process IDs
       ),
-      ProcessSegments AS (
-        -- Group data points into distinct processes
-        SELECT 
-          *,
-          SUM(ProcessStart) OVER (ORDER BY Timestamp) AS ProcessID
-        FROM ProcessBoundaries
-        WHERE IsInProcess = 1
-      ),
+      -- 4. Calculate statistics for each process
       ProcessStats AS (
-        -- Calculate statistics for each process
         SELECT
           ProcessID,
           MIN(Timestamp) AS StartTime,
@@ -145,11 +159,19 @@ export async function GET(request: NextRequest) {
           SUM(IsAboveMinTemp) AS AboveMinTempCount,
           COUNT(*) AS TotalReadingsCount,
           MIN(MinRequiredTemp) AS MinRequiredTemp,
-          -- Find the time_main value for this process (should be consistent within a process)
-          MAX(time_main) AS TimeMain
-        FROM ProcessSegments
+          -- The target time for the sterilization process
+          MAX(time_main) AS TimeMain,
+          -- Check if time_minute_run reached time_main during the process
+          MAX(ReachedTarget) AS ReachedTimeMain,
+          -- Max value of time_minute_run during the process
+          MAX(time_minute_run) AS MaxTimeRun,
+          -- Calculate the percentage of time at or above minimum required temperature
+          (SUM(IsAboveMinTemp) * 100.0 / COUNT(*)) AS PercentAboveMinTemp
+        FROM ProcessData
         GROUP BY ProcessID
-        HAVING COUNT(*) > 0
+        HAVING 
+          COUNT(*) > 0 AND 
+          DATEDIFF(MINUTE, MIN(Timestamp), MAX(Timestamp)) >= 5 -- Only processes at least 5 minutes long
       )
       -- Final output
       SELECT
@@ -161,17 +183,25 @@ export async function GET(request: NextRequest) {
         MaxTemperature,
         -- Calculate sterilization duration (time above minimum temperature)
         (AboveMinTempCount * 1.0 / TotalReadingsCount) * Duration AS SterilizationDuration,
-        -- High temp duration (simplified for now, equivalent to sterilization duration)
+        -- High temp duration (same as sterilization duration for compatibility)
         (AboveMinTempCount * 1.0 / TotalReadingsCount) * Duration AS HighTempDuration,
-        -- Also include TimeMain value in output for validation
+        -- Include TimeMain and MaxTimeRun for validation
         TimeMain,
+        MaxTimeRun,
+        -- Calculate percentage of target time reached
+        (MaxTimeRun * 100.0 / TimeMain) AS PercentTargetReached,
+        PercentAboveMinTemp,
         -- Success if:
-        -- 1. At least 80% of the time was above minimum temperature AND
-        -- 2. Process continued until time_minute_run reached time_main
-        CASE WHEN ((AboveMinTempCount * 1.0 / TotalReadingsCount) >= 0.8) THEN 1 ELSE 0 END AS Success
+        -- 1. Process reached at least 90% of time_main, AND
+        -- 2. At least 70% of the time was above minimum temperature
+        CASE WHEN 
+          ReachedTimeMain = 1 AND 
+          PercentAboveMinTemp >= 70 
+        THEN 1 ELSE 0 END AS Success
       FROM ProcessStats
       ORDER BY StartTime
     `;
+
 
     const result = await pool.request().query(query);
     
@@ -185,7 +215,8 @@ export async function GET(request: NextRequest) {
       minTemperature: row.MinTemperature,
       sterilizationDuration: row.SterilizationDuration,
       highTempDuration: row.HighTempDuration,
-      timeMain: row.TimeMain,  // اضافه کردن مقدار time_main برای بررسی
+      timeMain: row.TimeMain,
+      percentAboveMinTemp: Math.round(row.PercentAboveMinTemp), // درصد زمانی که دما بالای حداقل بوده
       success: row.Success === 1
     }));
 
