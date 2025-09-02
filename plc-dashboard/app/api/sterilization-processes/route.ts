@@ -216,7 +216,9 @@ export async function GET(request: NextRequest) {
       sterilizationDuration: row.SterilizationDuration,
       highTempDuration: row.HighTempDuration,
       timeMain: row.TimeMain,
-      percentAboveMinTemp: Math.round(row.PercentAboveMinTemp), // درصد زمانی که دما بالای حداقل بوده
+      maxTimeRun: row.MaxTimeRun,
+      percentTargetReached: Math.round(row.PercentTargetReached || 0),
+      percentAboveMinTemp: Math.round(row.PercentAboveMinTemp || 0),
       success: row.Success === 1
     }));
 

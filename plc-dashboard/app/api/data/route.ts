@@ -14,9 +14,11 @@ export async function GET(request: NextRequest) {
     const date = searchParams.get('date');
     const startHour = parseInt(searchParams.get('startHour') || '0');
     const endHour = parseInt(searchParams.get('endHour') || '24');
+    const start = searchParams.get('start'); // تاریخ و زمان دقیق شروع
+    const end = searchParams.get('end'); // تاریخ و زمان دقیق پایان
     const registers = searchParams.get('registers')?.split(',') || [];
 
-    console.log('📊 Params:', { plcName, date, startHour, endHour, registers });
+    console.log('📊 Params:', { plcName, date, startHour, endHour, start, end, registers });
 
     if (!plcName || !date) {
       return NextResponse.json(
@@ -76,9 +78,17 @@ export async function GET(request: NextRequest) {
       selectColumns = [...selectColumns, ...availableRegisters.map(reg => `[${reg.label}]`)];
     }
 
-    // Create WHERE clause for hour filtering
+    // Create WHERE clause for filtering
     let whereClause = '';
-    if (startHour > 0 || endHour < 24) {
+    
+    // اگر تاریخ و زمان دقیق شروع و پایان ارائه شده است
+    if (start && end) {
+      // استفاده از تاریخ و زمان دقیق
+      whereClause = `WHERE Timestamp >= '${start}' AND Timestamp <= '${end}'`;
+      console.log(`Using exact time filtering: ${start} to ${end}`);
+    } 
+    // در غیر این صورت از فیلتر ساعت استفاده می‌کنیم
+    else if (startHour > 0 || endHour < 24) {
       // Data is already in Tehran time, no timezone conversion needed
       const startTime = `'${date} ${startHour.toString().padStart(2, '0')}:00:00'`;
       const endTime = endHour === 24 
