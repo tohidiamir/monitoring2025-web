@@ -222,10 +222,7 @@ const SterilizationProcessChart: React.FC<ProcessChartProps> = ({ process }) => 
             <div class="info-label">حداقل دما:</div>
             <div>${process.minTemperature.toFixed(1)}°C</div>
           </div>
-          <div class="info-item">
-            <div class="info-label">درصد بالای دمای حداقل:</div>
-            <div>${process.percentAboveMinTemp}%</div>
-          </div>
+          <!-- درصد بالای دمای حداقل حذف شد -->
           <div class="info-item">
             <div class="info-label">درصد تکمیل زمان:</div>
             <div>${process.percentTargetReached}%</div>
