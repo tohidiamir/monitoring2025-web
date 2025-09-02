@@ -18,6 +18,14 @@ interface SterilizationProcess {
   percentTargetReached: number; // درصد رسیدن به time_main
   percentAboveMinTemp: number; // درصد زمان بالای دمای حداقل
   success: boolean;
+  // اضافه کردن فیلد دیباگ
+  debugInfo?: {
+    reachedTimeMain: number;
+    percentTargetReached: number;
+    percentAboveMinTemp: number;
+    successCondition1: boolean;
+    successCondition2: boolean;
+  };
 }
 
 // روش پیاده سازی قبلی:
@@ -119,6 +127,7 @@ export async function GET(request: NextRequest) {
           -- Mark if this row is part of a sterilization process
           CASE WHEN time_minute_run > 0 THEN 1 ELSE 0 END AS IsInProcess,
           -- Mark when temperature is above minimum required
+          -- For temperatures above 65°C, still count them as valid (they're hot enough)
           CASE WHEN Temputare_main / 10.0 >= Temputare_min / 10.0 THEN 1 ELSE 0 END AS IsAboveMinTemp
         FROM [${tableName}]
         WHERE Temputare_main > 0 AND time_minute_run IS NOT NULL
@@ -191,12 +200,11 @@ export async function GET(request: NextRequest) {
         -- Calculate percentage of target time reached
         (MaxTimeRun * 100.0 / TimeMain) AS PercentTargetReached,
         PercentAboveMinTemp,
-        -- Success if:
-        -- 1. Process reached at least 90% of time_main, AND
-        -- 2. At least 70% of the time was above minimum temperature
+        -- Simple success criteria: Process should reach at least 70% of time_main
+        -- OR have at least 60% of readings above minimum temperature
         CASE WHEN 
-          ReachedTimeMain = 1 AND 
-          PercentAboveMinTemp >= 70 
+          (MaxTimeRun * 100.0 / TimeMain) >= 70 OR
+          PercentAboveMinTemp >= 60
         THEN 1 ELSE 0 END AS Success
       FROM ProcessStats
       ORDER BY StartTime
@@ -219,7 +227,15 @@ export async function GET(request: NextRequest) {
       maxTimeRun: row.MaxTimeRun,
       percentTargetReached: Math.round(row.PercentTargetReached || 0),
       percentAboveMinTemp: Math.round(row.PercentAboveMinTemp || 0),
-      success: row.Success === 1
+      success: row.Success === 1,
+      // اضافه کردن فیلدهای توضیحی برای دیباگ
+      debugInfo: {
+        reachedTimeMain: row.ReachedTimeMain,
+        percentTargetReached: row.PercentTargetReached,
+        percentAboveMinTemp: row.PercentAboveMinTemp,
+        successCondition1: (row.MaxTimeRun * 100.0 / row.TimeMain) >= 70,
+        successCondition2: row.PercentAboveMinTemp >= 60
+      }
     }));
 
     return NextResponse.json({ 

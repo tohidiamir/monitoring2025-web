@@ -182,6 +182,12 @@ const SterilizationProcessChart: React.FC<ProcessChartProps> = ({ process }) => 
             .no-print {
               display: none;
             }
+            table.data-table {
+              page-break-inside: avoid;
+            }
+            .process-info {
+              page-break-inside: avoid;
+            }
           }
         </style>
       </head>
@@ -233,21 +239,28 @@ const SterilizationProcessChart: React.FC<ProcessChartProps> = ({ process }) => 
         </div>
         
         <div>
-          <div style="font-weight: bold; margin-bottom: 10px;">نمودار دمای فرآیند:</div>
+          <div style="font-weight: bold; margin-bottom: 10px;">داده‌های فرآیند استریل:</div>
           <div id="chart-container">
-            <img id="chart-image" style="width: 100%; max-height: 400px;" />
+            <!-- محتوای این بخش با جاوااسکریپت پر خواهد شد -->
+            <div style="width: 100%; height: 200px; background-color: #f5f5f5; display: flex; align-items: center; justify-content: center; border: 1px dashed #ccc;">
+              در حال آماده‌سازی داده‌های فرآیند...
+            </div>
           </div>
         </div>
         
         <div style="margin-top: 30px; border-top: 1px solid #ccc; padding-top: 20px;">
           <div style="font-weight: bold;">توضیحات فرآیند:</div>
           <p>
-            این فرآیند از دمای ${process.minTemperature.toFixed(1)}°C شروع شده، به حداکثر ${process.maxTemperature.toFixed(1)}°C رسیده است.
+            این فرآیند در تاریخ ${toJalaliDate(process.startTime)} از ساعت ${formatTime(process.startTime)} شروع شده
+            و در ساعت ${formatTime(process.endTime)} به پایان رسیده است.
+          </p>
+          <p>
+            دمای فرآیند از ${process.minTemperature.toFixed(1)}°C شروع شده، به حداکثر ${process.maxTemperature.toFixed(1)}°C رسیده است.
             زمان هدف ${process.timeMain} دقیقه بوده که ${process.maxTimeRun} دقیقه از آن طی شده است.
           </p>
           <p>
             درصد موفقیت فرآیند بر اساس زمان: ${process.percentTargetReached}%<br>
-            درصد موفقیت فرآیند بر اساس دما: ${process.percentAboveMinTemp}%
+            نتیجه نهایی: ${process.success ? '✅ فرآیند با موفقیت انجام شده است' : '⚠️ فرآیند به طور کامل انجام نشده است'}
           </p>
         </div>
 
@@ -265,56 +278,148 @@ const SterilizationProcessChart: React.FC<ProcessChartProps> = ({ process }) => 
     // نوشتن محتوا در پنجره جدید
     printWindow.document.write(printContent);
     
-    // حل مشکل تصویر نمودار - با استفاده از toDataURL
+    // بجای تلاش برای تبدیل نمودار به تصویر، از جدول داده‌ها استفاده می‌کنیم
     setTimeout(() => {
       try {
-        // استخراج تصویر نمودار از صفحه اصلی
-        const chartElement = document.querySelector('.recharts-wrapper');
-        if (chartElement) {
-          const svgElement = chartElement.querySelector('svg');
-          if (svgElement) {
-            const svgData = new XMLSerializer().serializeToString(svgElement);
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
+        // ایجاد جدول داده‌ها برای صفحه پرینت
+        let tableRows = '';
+        
+        // ساخت ردیف‌های جدول از داده‌های نمودار
+        // فقط تعدادی از داده‌ها را در جدول نشان می‌دهیم تا صفحه خیلی بزرگ نشود
+        const currentChartData = chartData; // استفاده از متغیر state
+        const sampleSize = Math.min(15, currentChartData.length);
+        const step = currentChartData.length > sampleSize ? Math.floor(currentChartData.length / sampleSize) : 1;
+        
+        // اطمینان از اینکه داده‌های مهم را داریم
+        const keySamples = new Set<number>(); // برای اطمینان از عدم تکرار
+        
+        // مطمئن شویم که شروع فرآیند را داریم
+        if (currentChartData.length > 0) {
+          keySamples.add(0);
+        }
+        
+        // مطمئن شویم که پایان فرآیند را داریم
+        if (currentChartData.length > 0) {
+          keySamples.add(currentChartData.length - 1);
+        }
+        
+        // نقاط دیگر را با فواصل منظم اضافه می‌کنیم
+        for (let i = 0; i < currentChartData.length; i += step) {
+          keySamples.add(i);
+        }
+        
+        // تبدیل به آرایه و مرتب‌سازی
+        const sampledIndices = Array.from(keySamples).sort((a: number, b: number) => a - b);
+        
+        for (const i of sampledIndices) {
+          if (i < currentChartData.length) {
+            const data: any = currentChartData[i];
+            const isAboveMinTemp = data.temperature >= process.minTemperature;
+            const statusCell = isAboveMinTemp ? 
+              `<td style="color: #059669;">✓ استاندارد</td>` : 
+              `<td style="color: #b91c1c;">✗ پایین‌تر از حد</td>`;
             
-            // تنظیم ابعاد مناسب
-            canvas.width = chartElement.clientWidth;
-            canvas.height = chartElement.clientHeight;
-            
-            // ایجاد تصویر از SVG
-            const image = new Image();
-            image.onload = function() {
-              ctx?.drawImage(image, 0, 0);
-              const pngData = canvas.toDataURL('image/png');
-              
-              // قرار دادن تصویر در صفحه پرینت
-              const imgElement = printWindow.document.getElementById('chart-image');
-              if (imgElement && imgElement instanceof HTMLImageElement) {
-                imgElement.src = pngData;
-                
-                // نمایش دیالوگ پرینت پس از بارگذاری تصویر
-                setTimeout(() => {
-                  printWindow.document.close();
-                  printWindow.focus();
-                  printWindow.print();
-                }, 500);
-              }
-            };
-            
-            // تبدیل SVG به تصویر
-            image.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
-          } else {
-            printWindow.document.close();
-            printWindow.focus();
-            printWindow.print();
+            tableRows += `
+              <tr>
+                <td>${formatTime(data.timestamp) || ''}</td>
+                <td>${data.temperature?.toFixed(1) || '-'}°C</td>
+                <td>${data.minimumTemp?.toFixed(1) || '-'}°C</td>
+                <td>${data.timeMinuteRun?.toFixed(1) || '-'}</td>
+                ${statusCell}
+              </tr>
+            `;
           }
-        } else {
+        }
+        
+        // قرار دادن جدول در صفحه پرینت
+        const chartContainer = printWindow.document.getElementById('chart-container');
+        if (chartContainer) {
+          chartContainer.innerHTML = `
+            <div style="margin-bottom: 20px;">
+              <div style="font-weight: bold; margin-bottom: 5px;">نمودار دمای فرآیند استریل</div>
+              <div style="font-style: italic; margin-bottom: 10px; font-size: 0.9em;">
+                دمای حداکثر: ${process.maxTemperature}°C | 
+                دمای حداقل: ${process.minTemperature}°C | 
+                زمان هدف: ${process.timeMain} دقیقه
+              </div>
+              
+              <div style="height: 60px; position: relative; margin-bottom: 20px; border-left: 1px solid #ccc; border-bottom: 1px solid #ccc;">
+                <!-- نمایش نموداری ساده -->
+                <div style="position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background-color: #e0e0e0;"></div>
+                
+                <!-- خط حداقل دمای استاندارد -->
+                <div style="position: absolute; bottom: 50%; left: 0; width: 100%; height: 1px; border-top: 2px dashed #ff0000;"></div>
+                <div style="position: absolute; bottom: 50%; left: 1%; font-size: 8px; color: #b91c1c;">حداقل دمای استاندارد: ${process.minTemperature.toFixed(1)}°C</div>
+                
+                <!-- پیش‌گرم -->
+                <div style="position: absolute; bottom: 0; left: 0%; width: 30%; height: 100%; background-color: #ffe8cc; opacity: 0.3;"></div>
+                <div style="position: absolute; bottom: -20px; left: 12%; font-size: 0.8em; color: #7c2d12;">پیش‌گرم</div>
+                
+                <!-- استریلیزاسیون -->
+                <div style="position: absolute; bottom: 0; left: 30%; width: 40%; height: 100%; background-color: #d1fae5; opacity: 0.3;"></div>
+                <div style="position: absolute; bottom: -20px; left: 45%; font-size: 0.8em; color: #065f46;">استریلیزاسیون</div>
+                
+                <!-- خنک‌سازی -->
+                <div style="position: absolute; bottom: 0; left: 70%; width: 30%; height: 100%; background-color: #dbeafe; opacity: 0.3;"></div>
+                <div style="position: absolute; bottom: -20px; left: 80%; font-size: 0.8em; color: #1e40af;">خنک‌سازی</div>
+                
+                <!-- نشانگر درصد تکمیل زمان هدف -->
+                <div style="position: absolute; bottom: 0; left: 30%; width: ${(process.percentTargetReached * 40 / 100)}%; height: 8px; background-color: #059669;"></div>
+                
+                <!-- نقاط شروع و پایان -->
+                <div style="position: absolute; bottom: 0; left: 0; height: 10px; width: 2px; background-color: #000;"></div>
+                <div style="position: absolute; bottom: 0; right: 0; height: 10px; width: 2px; background-color: #000;"></div>
+                <div style="position: absolute; bottom: -35px; left: 0; font-size: 0.8em;">شروع: ${formatTime(process.startTime)}</div>
+                <div style="position: absolute; bottom: -35px; right: 0; font-size: 0.8em;">پایان: ${formatTime(process.endTime)}</div>
+              </div>
+              
+              <!-- راهنمای نمودار -->
+              <div style="font-size: 10px; margin-bottom: 15px;">
+                <div style="margin-bottom: 5px;"><span style="display: inline-block; width: 10px; height: 10px; background-color: #059669; margin-left: 5px;"></span>درصد تکمیل زمان هدف: ${process.percentTargetReached}%</div>
+                <div><span style="display: inline-block; width: 10px; height: 10px; border-top: 2px dashed #ff0000; margin-left: 5px;"></span>حداقل دمای استاندارد: ${process.minTemperature.toFixed(1)}°C</div>
+              </div>
+            </div>
+            
+            <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.85em;">
+              <thead>
+                <tr style="background-color: #f5f5f5;">
+                  <th style="border: 1px solid #ccc; padding: 5px; text-align: right;">زمان</th>
+                  <th style="border: 1px solid #ccc; padding: 5px; text-align: right;">دما (°C)</th>
+                  <th style="border: 1px solid #ccc; padding: 5px; text-align: right;">دمای حداقل (°C)</th>
+                  <th style="border: 1px solid #ccc; padding: 5px; text-align: right;">زمان فرآیند (دقیقه)</th>
+                  <th style="border: 1px solid #ccc; padding: 5px; text-align: right;">وضعیت</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${tableRows}
+              </tbody>
+            </table>
+          `;
+        }
+        
+        // نمایش دیالوگ پرینت
+        setTimeout(() => {
           printWindow.document.close();
           printWindow.focus();
           printWindow.print();
-        }
+        }, 500);
+        
       } catch (err) {
-        console.error('خطا در استخراج تصویر نمودار:', err);
+        console.error('خطا در ساخت جدول داده‌ها:', err);
+        
+        // در صورت خطا، یک پیام ساده نمایش می‌دهیم
+        const chartContainer = printWindow.document.getElementById('chart-container');
+        if (chartContainer) {
+          chartContainer.innerHTML = `
+            <div style="padding: 20px; border: 1px solid #ccc; text-align: center;">
+              <p>متأسفانه امکان نمایش نمودار وجود ندارد.</p>
+              <p>اطلاعات فرآیند:</p>
+              <p>دمای حداکثر: ${process.maxTemperature}°C | دمای حداقل: ${process.minTemperature}°C</p>
+              <p>زمان هدف: ${process.timeMain} دقیقه | زمان اجرا شده: ${process.maxTimeRun} دقیقه</p>
+            </div>
+          `;
+        }
+        
         printWindow.document.close();
         printWindow.focus();
         printWindow.print();
@@ -468,9 +573,7 @@ const SterilizationProcessChart: React.FC<ProcessChartProps> = ({ process }) => 
             <Badge variant="outline">
               درصد تکمیل: {process.percentTargetReached}%
             </Badge>
-            <Badge variant="outline">
-              درصد زمان بالای دمای حداقل: {process.percentAboveMinTemp}%
-            </Badge>
+            {/* درصد زمان بالای دمای حداقل نمایش داده نمی‌شود */}
           </div>
           
           {/* دکمه پرینت فرآیند */}

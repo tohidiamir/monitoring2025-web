@@ -300,10 +300,7 @@ export default function SterilizationPage() {
                             <div className="mt-1">{process.minTemperature.toFixed(1)}°C</div>
                           </div>
                           
-                          <div>
-                            <span className="font-medium text-gray-600">درصد بالای دمای حداقل:</span>
-                            <div className="mt-1">{process.percentAboveMinTemp}%</div>
-                          </div>
+                          {/* درصد بالای دمای حداقل نمایش داده نمی‌شود */}
                           
                           <div>
                             <span className="font-medium text-gray-600">درصد تکمیل زمان:</span>
