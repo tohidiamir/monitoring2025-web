@@ -47,10 +47,10 @@ interface ChartDataPoint {
 
 // تابع فرمت‌کننده زمان بدون تغییر timezone
 const formatTime = (dateString: string): string => {
-  // فقط ساعت و دقیقه از رشته زمان دریافتی را استخراج می‌کنیم
+  // فقط ساعت، دقیقه و ثانیه از رشته زمان دریافتی را استخراج می‌کنیم
   const timeMatch = dateString.match(/(\d{2}):(\d{2}):(\d{2})/);
   if (timeMatch) {
-    return `${timeMatch[1]}:${timeMatch[2]}`;
+    return `${timeMatch[1]}:${timeMatch[2]}:${timeMatch[3]}`;
   }
   return dateString;
 };
@@ -188,6 +188,8 @@ const SterilizationProcessChart: React.FC<ProcessChartProps> = ({ process }) => 
           <span>شروع: {formatTime(process.startTime)}</span>
           <span className="mx-2">|</span>
           <span>پایان: {formatTime(process.endTime)}</span>
+          <span className="mx-2">|</span>
+          <span>مدت: {process.duration} دقیقه</span>
         </div>
       </div>
 
@@ -200,8 +202,16 @@ const SterilizationProcessChart: React.FC<ProcessChartProps> = ({ process }) => 
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis 
               dataKey="time" 
-              tick={{ fontSize: 10 }} 
+              tick={{ fontSize: 10 }}
               interval={chartData.length > 20 ? Math.ceil(chartData.length/10) : 0}
+              tickFormatter={(value) => {
+                // نمایش فقط ساعت:دقیقه
+                const timeParts = value.split(':');
+                if (timeParts.length >= 2) {
+                  return `${timeParts[0]}:${timeParts[1]}`;
+                }
+                return value;
+              }}
             />
             <YAxis 
               yAxisId="left"
@@ -215,15 +225,39 @@ const SterilizationProcessChart: React.FC<ProcessChartProps> = ({ process }) => 
                 return [value, name];
               }}
               labelFormatter={(label, payload) => {
-                // نمایش دقیق زمان بدون تغییر timezone
+                // نمایش فقط ساعت:دقیقه:ثانیه از timestamp
                 if (payload && payload.length > 0) {
                   const data = payload[0].payload;
                   const timeRunValue = data.timeMinuteRun || 0;
-                  return `زمان: ${data.timestamp || label} | زمان اجرا: ${timeRunValue} دقیقه`;
+                  const tempValue = data.temperature || 0;
+                  const minTempValue = data.minimumTemp || 0;
+                  
+                  // استخراج فقط بخش زمان (ساعت:دقیقه:ثانیه) از timestamp کامل
+                  let timeDisplay = label;
+                  if (data.timestamp) {
+                    const timeMatch = data.timestamp.match(/(\d{2}):(\d{2}):(\d{2})/);
+                    if (timeMatch) {
+                      timeDisplay = `${timeMatch[1]}:${timeMatch[2]}:${timeMatch[3]}`;
+                    }
+                  }
+                  
+                  return (
+                    `زمان: ${timeDisplay}\n` +
+                    `دما: ${tempValue}°C (حداقل: ${minTempValue}°C)\n` +
+                    `زمان فرآیند: ${timeRunValue} دقیقه`
+                  );
                 }
                 return `زمان: ${label}`;
               }}
-              contentStyle={{ direction: 'rtl', textAlign: 'right' }}
+              contentStyle={{ 
+                direction: 'rtl', 
+                textAlign: 'right',
+                padding: '8px',
+                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                whiteSpace: 'pre-line'
+              }}
             />
             <Legend />
             
