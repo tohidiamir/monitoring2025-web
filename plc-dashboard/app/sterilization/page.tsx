@@ -49,6 +49,8 @@ export default function SterilizationPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [registers, setRegisters] = useState<RegisterData[]>([]);
+  // اضافه کردن state برای نگهداری زمان‌های رسیدن به time_main
+  const [timeMainReachedTimes, setTimeMainReachedTimes] = useState<{[processId: number]: string}>({}); // processId => timestamp
 
   const loadPLCs = async () => {
     try {
@@ -139,6 +141,50 @@ export default function SterilizationPage() {
     const hours = Math.floor(minutes / 60);
     const mins = Math.floor(minutes % 60);
     return hours > 0 ? `${hours} ساعت و ${mins} دقیقه` : `${mins} دقیقه`;
+  };
+  
+  // تابع برای نمایش وضعیت زمان پایان
+  const getEndTimeDisplay = (process: SterilizationProcess) => {
+    // بررسی اینکه آیا زمان رسیدن به هدف برای این فرآیند ثبت شده است
+    const timeMainReachedTime = timeMainReachedTimes[process.id];
+    
+    // اگر زمان اجرا شده به زمان هدف رسیده باشد و زمان دقیق آن را داریم
+    if (process.maxTimeRun >= process.timeMain && timeMainReachedTime) {
+      return (
+        <div className="flex flex-col">
+          <div>{formatTime(timeMainReachedTime)}</div>
+          <div className="text-xs text-green-600 font-medium mt-1">
+            ✓ رسیدن به زمان هدف
+          </div>
+        </div>
+      );
+    }
+    // اگر زمان اجرا شده به زمان هدف رسیده اما زمان دقیق نداریم
+    else if (process.maxTimeRun >= process.timeMain) {
+      return (
+        <div className="flex flex-col">
+          <div>{formatTime(process.endTime)}</div>
+          <div className="text-xs text-green-600 font-medium mt-1">
+            ✓ رسیدن به زمان هدف
+          </div>
+        </div>
+      );
+    }
+    
+    // در غیر این صورت فقط زمان پایان نمایش داده شود
+    return (
+      <div>{formatTime(process.endTime)}</div>
+    );
+  };
+  
+  // تابع برای دریافت زمان رسیدن به time_main
+  const handleTimeMainReached = (processId: number, timestamp: string) => {
+    console.log(`زمان رسیدن به time_main برای فرآیند ${processId}: ${timestamp}`);
+    
+    setTimeMainReachedTimes(prev => ({
+      ...prev,
+      [processId]: timestamp
+    }));
   };
 
   const selectedPLCConfig = plcs.find(p => p.name === selectedPLC);
@@ -246,7 +292,11 @@ export default function SterilizationPage() {
                     <div key={process.id}>
                       {/* نمودار فرآیند استریل */}
                       <div className="mb-2">
-                        <SterilizationProcessChart process={process} plcName={selectedPLC} />
+                        <SterilizationProcessChart 
+                          process={process} 
+                          plcName={selectedPLC}
+                          onTimeMainReached={handleTimeMainReached} 
+                        />
                       </div>
                       
                       {/* اطلاعات فرآیند */}
@@ -280,7 +330,7 @@ export default function SterilizationPage() {
                           
                           <div>
                             <span className="font-medium text-gray-600">زمان پایان:</span>
-                            <div className="mt-1">{formatTime(process.endTime)}</div>
+                            <div className="mt-1">{getEndTimeDisplay(process)}</div>
                           </div>
                           
                           <div>
@@ -319,7 +369,16 @@ export default function SterilizationPage() {
                           </p>
                           <p className="text-sm text-gray-600 mt-2">
                             <span className="font-medium">زمان هدف:</span>
-                            {` ${process.timeMain} دقیقه (${process.maxTimeRun} دقیقه طی شده)`}
+                            {` ${process.timeMain} دقیقه `}
+                            <span className={process.maxTimeRun >= process.timeMain ? 'text-green-600 font-medium' : ''}>
+                              ({process.maxTimeRun} دقیقه طی شده
+                              {process.maxTimeRun >= process.timeMain ? ' - هدف زمانی محقق شد ✓' : ''})
+                            </span>
+                            {timeMainReachedTimes[process.id] && (
+                              <span className="block text-xs text-green-600 mt-1">
+                                زمان دقیق رسیدن به هدف: {formatTime(timeMainReachedTimes[process.id])}
+                              </span>
+                            )}
                           </p>
                         </div>
                       </div>

@@ -37,6 +37,7 @@ interface ProcessChartProps {
     success: boolean;
   };
   plcName?: string; // اضافه کردن prop جدید برای نام PLC
+  onTimeMainReached?: (processId: number, timestamp: string) => void; // اضافه کردن callback برای زمان رسیدن به time_main
 }
 
 interface ChartDataPoint {
@@ -89,7 +90,7 @@ const toJalaliDateTime = (dateString: string): string => {
   }
 };
 
-const SterilizationProcessChart: React.FC<ProcessChartProps> = ({ process, plcName }) => {
+const SterilizationProcessChart: React.FC<ProcessChartProps> = ({ process, plcName, onTimeMainReached }) => {
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -205,7 +206,7 @@ const SterilizationProcessChart: React.FC<ProcessChartProps> = ({ process, plcNa
           </div>
           <div class="info-item">
             <div class="info-label">زمان پایان:</div>
-            <div>${toJalaliDateTime(process.endTime)}</div>
+            <div>${toJalaliDateTime(actualEndTime)}</div>
           </div>
           <div class="info-item">
             <div class="info-label">مدت کل:</div>
@@ -250,7 +251,7 @@ const SterilizationProcessChart: React.FC<ProcessChartProps> = ({ process, plcNa
           <div style="font-weight: bold;">توضیحات فرآیند:</div>
           <p>
             این فرآیند در تاریخ ${toJalaliDate(process.startTime)} از ساعت ${formatTime(process.startTime)} شروع شده
-            و در ساعت ${formatTime(process.endTime)} به پایان رسیده است.
+            و در ساعت ${formatTime(actualEndTime)} به پایان رسیده است.
           </p>
           <p>
             دمای فرآیند از ${process.minTemperature.toFixed(1)}°C شروع شده، به حداکثر ${process.maxTemperature.toFixed(1)}°C رسیده است.
@@ -368,7 +369,7 @@ const SterilizationProcessChart: React.FC<ProcessChartProps> = ({ process, plcNa
                 <div style="position: absolute; bottom: 0; left: 0; height: 10px; width: 2px; background-color: #000;"></div>
                 <div style="position: absolute; bottom: 0; right: 0; height: 10px; width: 2px; background-color: #000;"></div>
                 <div style="position: absolute; bottom: -35px; left: 0; font-size: 0.8em;">شروع: ${formatTime(process.startTime)}</div>
-                <div style="position: absolute; bottom: -35px; right: 0; font-size: 0.8em;">پایان: ${formatTime(process.endTime)}</div>
+                <div style="position: absolute; bottom: -35px; right: 0; font-size: 0.8em;">پایان: ${formatTime(actualEndTime)}</div>
               </div>
               
               <!-- راهنمای نمودار -->
@@ -457,7 +458,22 @@ const SterilizationProcessChart: React.FC<ProcessChartProps> = ({ process, plcNa
         const startDate = new Date(process.startTime);
         startDate.setMinutes(startDate.getMinutes() - 10);
         const processStartTime = startDate.toISOString();
-        const processEndTime = process.endTime;
+        
+        // زمان پایان به شرطی است که time_minute_run به time_main رسیده باشد
+        // در غیر این صورت از زمان پایان موجود در process استفاده می‌کنیم
+        let processEndTime = process.endTime;
+        
+        // بررسی اینکه آیا زمان اجرا به زمان هدف رسیده است
+        if (process.maxTimeRun >= process.timeMain) {
+          console.log('زمان اجرا به زمان هدف رسیده است. استفاده از زمان پایان موجود.');
+        } else {
+          // اگر به زمان هدف نرسیده، زمان پایان را به یک بازه زمانی کمی طولانی‌تر تغییر می‌دهیم
+          // تا داده‌های بیشتری از فرآیند را پوشش دهیم
+          const endDate = new Date(process.endTime);
+          endDate.setMinutes(endDate.getMinutes() + 5);
+          processEndTime = endDate.toISOString();
+          console.log('زمان اجرا به زمان هدف نرسیده است. افزودن مدت زمان به پایان.');
+        }
         
         console.log(`استخراج داده‌ها: ${plc}, تاریخ ${date} از ${processStartTime} تا ${processEndTime}`);
 
@@ -501,6 +517,45 @@ const SterilizationProcessChart: React.FC<ProcessChartProps> = ({ process, plcNa
           minimumTemp: parseFloat((point.Temputare_min / 10).toFixed(1)),
           timeMinuteRun: point.Time_Minute_Run || 0  // اضافه کردن زمان فرآیند با نام صحیح فیلد
         }));
+        
+        // پیدا کردن زمان واقعی رسیدن به time_main (در صورت وجود چنین نقطه‌ای)
+        // در این حالت به دنبال اولین نقطه‌ای هستیم که time_minute_run به time_main رسیده است
+        let actualEndTimePoint = null;
+        for (const point of chartData) {
+          // بررسی اینکه آیا time_minute_run به time_main رسیده است
+          if (point.timeMinuteRun >= process.timeMain) {
+            actualEndTimePoint = point;
+            break; // با پیدا کردن اولین نقطه از حلقه خارج می‌شویم
+          }
+        }
+        
+        // اگر نقطه‌ای پیدا شد که time_minute_run به time_main رسیده است
+        if (actualEndTimePoint) {
+          console.log(`زمان واقعی رسیدن به زمان هدف پیدا شد: ${actualEndTimePoint.timestamp}`);
+          
+          // به‌روزرسانی زمان پایان در اطلاعات فرآیند
+          // این کار برای نمایش در رابط کاربری است و داده‌های اصلی را تغییر نمی‌دهد
+          const updatedProcess = {
+            ...process,
+            actualEndTime: actualEndTimePoint.timestamp,
+            // اطلاعات دیباگ برای نمایش در کنسول
+            debug: {
+              originalEndTime: process.endTime,
+              newEndTime: actualEndTimePoint.timestamp,
+              timeMinuteRun: actualEndTimePoint.timeMinuteRun,
+              timeMain: process.timeMain
+            }
+          };
+          
+          console.log('اطلاعات فرآیند به‌روزرسانی شد:', updatedProcess.debug);
+          
+          // فراخوانی callback برای اطلاع به کامپوننت پدر
+          if (onTimeMainReached) {
+            onTimeMainReached(process.id, actualEndTimePoint.timestamp);
+          }
+        } else {
+          console.log('هیچ نقطه‌ای با time_minute_run برابر یا بیشتر از time_main یافت نشد.');
+        }
       
         console.log('داده‌های نمودار آماده شد:', chartData.length);
         setChartData(chartData);
@@ -544,6 +599,10 @@ const SterilizationProcessChart: React.FC<ProcessChartProps> = ({ process, plcNa
 
   // پیدا کردن مقدار حداقل دما برای خط مرجع
   const minRequiredTemp = chartData[0]?.minimumTemp || 0;
+  
+  // پیدا کردن زمان واقعی پایان (لحظه رسیدن به time_main)
+  const actualEndTimePoint = chartData.find(point => point.timeMinuteRun >= process.timeMain);
+  const actualEndTime = actualEndTimePoint?.timestamp || process.endTime;
   
   // محاسبه دامنه دمایی برای نمودار (حداقل و حداکثر دما)
   const minTemp = Math.min(...chartData.map(d => d.temperature));
@@ -598,9 +657,21 @@ const SterilizationProcessChart: React.FC<ProcessChartProps> = ({ process, plcNa
         <div className="text-xs text-gray-500 mb-2">
           <span>شروع: {toJalaliDateTime(process.startTime)}</span>
           <span className="mx-2">|</span>
-          <span>پایان: {toJalaliDateTime(process.endTime)}</span>
+          <span>پایان: {toJalaliDateTime(actualEndTime)}</span>
           <span className="mx-2">|</span>
           <span>مدت: {process.duration} دقیقه</span>
+          <span className="mx-2">|</span>
+          <span>زمان هدف: {process.timeMain} دقیقه</span>
+          <span className="mx-2">|</span>
+          <span>زمان اجرا شده: {process.maxTimeRun} دقیقه</span>
+          {actualEndTimePoint && (
+            <>
+              <span className="mx-2">|</span>
+              <span className="text-green-600 font-bold">
+                رسیدن به زمان هدف: {formatTime(actualEndTimePoint.timestamp)}
+              </span>
+            </>
+          )}
         </div>
       </div>
 
@@ -689,6 +760,17 @@ const SterilizationProcessChart: React.FC<ProcessChartProps> = ({ process, plcNa
               stroke="blue" 
               strokeDasharray="3 3" 
             />
+            
+            {/* نشانگر لحظه رسیدن به زمان هدف (اگر چنین نقطه‌ای وجود داشته باشد) */}
+            {chartData.findIndex(point => point.timeMinuteRun >= process.timeMain) !== -1 && (
+              <ReferenceLine
+                x={chartData.find(point => point.timeMinuteRun >= process.timeMain)?.time}
+                stroke="green"
+                strokeWidth={2}
+                label={{ value: 'رسیدن به زمان هدف', position: 'top', fill: 'green' }}
+                yAxisId="left"
+              />
+            )}
             
             {/* نمودار دما */}
             <Line 
