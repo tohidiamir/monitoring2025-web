@@ -117,9 +117,11 @@ export default function SterilizationPage() {
   // Load processes and registers when PLC or date changes
   useEffect(() => {
     if (selectedPLC && selectedDate) {
+      console.log(`صفحه استریلیزاسیون: بارگیری فرآیندها برای PLC ${selectedPLC} و تاریخ ${selectedDate}`);
       loadProcesses();
     }
     if (selectedPLC) {
+      console.log(`صفحه استریلیزاسیون: بارگیری آخرین داده برای PLC ${selectedPLC}`);
       fetchLatestData();
     }
   }, [selectedPLC, selectedDate]);
@@ -174,6 +176,7 @@ export default function SterilizationPage() {
                 <select
                   value={selectedPLC}
                   onChange={(e) => {
+                    console.log(`تغییر PLC انتخاب شده به: ${e.target.value}`);
                     setSelectedPLC(e.target.value);
                     setSelectedDate('');
                     setProcesses([]);
@@ -243,7 +246,7 @@ export default function SterilizationPage() {
                     <div key={process.id}>
                       {/* نمودار فرآیند استریل */}
                       <div className="mb-2">
-                        <SterilizationProcessChart process={process} />
+                        <SterilizationProcessChart process={process} plcName={selectedPLC} />
                       </div>
                       
                       {/* اطلاعات فرآیند */}

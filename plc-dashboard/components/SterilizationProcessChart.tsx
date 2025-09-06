@@ -36,6 +36,7 @@ interface ProcessChartProps {
     percentAboveMinTemp: number;
     success: boolean;
   };
+  plcName?: string; // اضافه کردن prop جدید برای نام PLC
 }
 
 interface ChartDataPoint {
@@ -88,7 +89,7 @@ const toJalaliDateTime = (dateString: string): string => {
   }
 };
 
-const SterilizationProcessChart: React.FC<ProcessChartProps> = ({ process }) => {
+const SterilizationProcessChart: React.FC<ProcessChartProps> = ({ process, plcName }) => {
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -434,11 +435,16 @@ const SterilizationProcessChart: React.FC<ProcessChartProps> = ({ process }) => 
         const date = startTime.toISOString().split('T')[0]; // فرمت YYYY-MM-DD
         
         // استخراج شناسه PLC
-        // فرض می‌کنیم که پارامتر PLC در URL یا از طریق parent component دریافت شده
-        let plc = 'PLC_01'; // مقدار پیش‌فرض
+        let plc = plcName || 'PLC_01'; // اگر plcName از prop ها وجود داشت از آن استفاده کن، در غیر اینصورت از مقدار پیش‌فرض استفاده کن
 
-        // استخراج از URL
-        if (typeof window !== 'undefined') {
+        // لاگ برای تشخیص مقدار PLC
+        console.log(`استفاده از PLC در نمودار استریلیزاسیون: ${plc}`, { 
+          propPLC: plcName, 
+          defaultPLC: 'PLC_01'
+        });
+
+        // استخراج از URL (فقط اگر plcName وجود نداشته باشد)
+        if (!plcName && typeof window !== 'undefined') {
           const urlParams = new URLSearchParams(window.location.search);
           const urlPlc = urlParams.get('plc');
           if (urlPlc) {
